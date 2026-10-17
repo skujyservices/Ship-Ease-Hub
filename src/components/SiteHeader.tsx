@@ -2,19 +2,42 @@ import Link from "next/link";
 import { BRAND } from "@/lib/brand";
 import { Logo, LogoBadge, LogoLockup } from "./Logo";
 
-/** Dark marketing header (marketing site dark, app light). */
-export function SiteHeader() {
+const NAV = [
+  ["Send a parcel", "/quote"],
+  ["Shop & Ship", "/#shop-ship"],
+  ["Buy for me", "/#services"],
+  ["Track", "/track"],
+] as const;
+
+/** White site navigation (Editorial style). `active` highlights the current section. */
+export function SiteNav({ active, home = "/" }: { active?: string; home?: string }) {
   return (
-    <header className="bg-navy">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-        <Logo tone="dark" className="h-7 w-auto sm:h-8" />
-        <nav className="flex items-center gap-2 text-sm font-semibold sm:gap-6">
-          <Link href="/track" className="hidden text-silver hover:text-white sm:inline">Track</Link>
-          <Link href="/quote" className="hidden text-silver hover:text-white sm:inline">Get a quote</Link>
-          <Link href="/login" className="text-silver hover:text-white">Sign in</Link>
-          <Link href="/signup" className="btn-accent px-4 py-2">Get started</Link>
-        </nav>
+    <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-6">
+      <Logo href={home} className="h-7 w-auto" />
+      <div className="hidden items-center gap-1 rounded-full bg-mist p-1 text-sm font-medium md:flex">
+        {NAV.map(([label, href]) => (
+          <Link
+            key={label}
+            href={href}
+            className={`rounded-full px-4 py-2 transition ${active === label ? "bg-white text-navy shadow-sm" : "text-navy/60 hover:text-navy"}`}
+          >
+            {label}
+          </Link>
+        ))}
       </div>
+      <div className="flex items-center gap-4 text-sm font-semibold">
+        <Link href="/login" className="hidden text-navy/70 hover:text-navy sm:inline">Sign in</Link>
+        <Link href="/signup" className="rounded-full bg-navy px-5 py-2.5 text-white transition hover:bg-purple">Get started</Link>
+      </div>
+    </nav>
+  );
+}
+
+/** Marketing pages header: the white pill navigation. */
+export function SiteHeader({ active }: { active?: string }) {
+  return (
+    <header className="border-b border-silver/50 bg-white">
+      <SiteNav active={active} />
     </header>
   );
 }

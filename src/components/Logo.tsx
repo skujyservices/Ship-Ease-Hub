@@ -44,8 +44,19 @@ export function LogoMark({ className = "h-6 w-auto", color = PURPLE }: { classNa
 }
 
 /** Primary logo: mark + SEH wordmark. Links home by default. */
-export function Logo({ tone = "light", href = "/", className = "h-7 w-auto" }: { tone?: Tone; href?: string | null; className?: string }) {
-  const svg = <Art a={art.seh} title="Ship Ease Hub" className={className} textColor={tone === "dark" ? "#FFFFFF" : NAVY} />;
+export function Logo({
+  tone = "light",
+  href = "/",
+  className = "h-7 w-auto",
+  markColor = PURPLE,
+}: {
+  tone?: Tone;
+  href?: string | null;
+  className?: string;
+  /** White on Royal Purple backgrounds, where a purple mark would disappear. */
+  markColor?: string;
+}) {
+  const svg = <Art a={art.seh} title="Ship Ease Hub" className={className} markColor={markColor} textColor={tone === "dark" ? "#FFFFFF" : NAVY} />;
   return href ? (
     <Link href={href} className="inline-flex items-center" aria-label="Ship Ease Hub home">
       {svg}

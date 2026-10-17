@@ -11,8 +11,8 @@ export default async function QuotePage({ searchParams }: PageProps<"/quote">) {
   const session = await getSession();
   return (
     <>
-      <SiteHeader />
-      <main className="flex-1 bg-mist px-4 py-10">
+      <SiteHeader active="Send a parcel" />
+      <main className="bg-grid flex-1 px-4 py-10">
         <div className="card mx-auto max-w-2xl sm:p-8">
           <ParcelWizard signedIn={Boolean(session)} resumeId={typeof q === "string" ? q : undefined} basePath="/quote" />
         </div>

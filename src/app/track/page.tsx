@@ -9,8 +9,8 @@ export default async function TrackSearch({ searchParams }: PageProps<"/track">)
   if (typeof code === "string" && code.trim()) redirect(`/track/${encodeURIComponent(code.trim().toUpperCase())}`);
   return (
     <>
-      <SiteHeader />
-      <main className="flex-1 bg-mist px-4 py-16">
+      <SiteHeader active="Track" />
+      <main className="bg-grid flex-1 px-4 py-16">
         <form className="card mx-auto max-w-md">
           <label htmlFor="code" className="label">Tracking code</label>
           <div className="flex gap-2">

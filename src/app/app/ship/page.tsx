@@ -27,7 +27,7 @@ const OPTIONS = [
 export default function ShipPage() {
   return (
     <div className="mx-auto max-w-xl">
-      <h1 className="text-2xl font-bold text-navy">What would you like to do?</h1>
+      <h1 className="text-3xl font-light text-navy">What would you like to do?</h1>
       <div className="mt-6 space-y-3">
         {OPTIONS.map((o) =>
           o.ready ? (

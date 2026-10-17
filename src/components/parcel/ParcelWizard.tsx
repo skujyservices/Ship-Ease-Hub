@@ -431,7 +431,7 @@ function Stepper({ step, onJump }: { step: number; onJump: (s: number) => void }
 function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="text-xl font-bold text-navy">{title}</h2>
+      <h2 className="text-2xl font-light text-navy">{title}</h2>
       {subtitle && <p className="mb-5 mt-1 text-sm text-navy/60">{subtitle}</p>}
       {!subtitle && <div className="mb-5" />}
       {children}

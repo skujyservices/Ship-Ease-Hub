@@ -8,13 +8,13 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
   const user = await requireUser("/app");
   return (
     <div className="bg-grid flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-30 border-b border-silver/60 bg-white">
+      <header className="sticky top-0 z-30 border-b border-silver/50 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
           <Logo href="/app/shipments" />
           <div className="flex items-center gap-3">
             <TabBar />
             {user.role !== "CUSTOMER" && (
-              <Link href="/admin" className="rounded-lg bg-navy px-3 py-2 text-xs font-semibold text-white">Admin</Link>
+              <Link href="/admin" className="rounded-full bg-navy px-4 py-2.5 text-xs font-semibold text-white">Admin</Link>
             )}
           </div>
         </div>

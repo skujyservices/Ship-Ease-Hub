@@ -28,8 +28,8 @@ export default async function TrackPage({ params }: PageProps<"/track/[code]">) 
 
   return (
     <>
-      <SiteHeader />
-      <main className="flex-1 bg-mist px-4 py-10">
+      <SiteHeader active="Track" />
+      <main className="bg-grid flex-1 px-4 py-10">
         <div className="mx-auto max-w-xl space-y-4">
           {!visible ? (
             <div className="card text-center">
