@@ -17,20 +17,21 @@ export function TabBar() {
 
   return (
     <>
-      <nav className="hidden items-center gap-1 sm:flex" aria-label="Main">
-        {TABS.map((t) => (
-          <Link
-            key={t.href}
-            href={t.href}
-            className={
-              t.primary
-                ? "btn-primary ml-2 px-4 py-2"
-                : `rounded-lg px-3 py-2 text-sm font-semibold ${active(t.href) ? "bg-mist text-navy" : "text-navy/60 hover:text-navy"}`
-            }
-          >
-            {t.label}
-          </Link>
-        ))}
+      <nav className="hidden items-center gap-3 sm:flex" aria-label="Main">
+        <div className="flex items-center gap-1 rounded-full bg-mist p-1 text-sm font-medium">
+          {TABS.filter((t) => !t.primary).map((t) => (
+            <Link
+              key={t.href}
+              href={t.href}
+              className={`rounded-full px-4 py-2 transition ${active(t.href) ? "bg-white text-navy shadow-sm" : "text-navy/60 hover:text-navy"}`}
+            >
+              {t.label}
+            </Link>
+          ))}
+        </div>
+        <Link href="/app/ship" className="btn-primary px-5 py-2.5">
+          <LogoMark className="h-2.5 w-auto" color="#FFFFFF" /> Ship
+        </Link>
       </nav>
 
       <nav
@@ -40,7 +41,7 @@ export function TabBar() {
         {TABS.map((t) =>
           t.primary ? (
             <Link key={t.href} href={t.href} className="-mt-5 flex flex-col items-center" aria-current={active(t.href) ? "page" : undefined}>
-              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple shadow-lg shadow-purple/30">
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-purple shadow-lg shadow-purple/30">
                 <LogoMark className="h-5 w-auto" color="#FFFFFF" />
               </span>
               <span className="mt-1 text-[11px] font-semibold text-navy">Ship</span>

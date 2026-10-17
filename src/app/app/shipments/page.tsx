@@ -35,7 +35,7 @@ export default async function ShipmentsPage({ searchParams }: PageProps<"/app/sh
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-navy">Shipments</h1>
+        <h1 className="text-3xl font-light text-navy">Shipments</h1>
         <form className="w-full sm:w-64">
           <input name="q" defaultValue={q} className="input" placeholder="Search by code" aria-label="Search shipments" />
           {tab !== "all" && <input type="hidden" name="tab" value={tab} />}

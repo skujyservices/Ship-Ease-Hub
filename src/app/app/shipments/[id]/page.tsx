@@ -56,7 +56,7 @@ export default async function ShipmentPage({ params, searchParams }: PageProps<"
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="font-mono text-sm text-navy/60">{s.code}</p>
-            <h1 className="text-xl font-bold text-navy">
+            <h1 className="text-2xl font-light text-navy">
               {from?.city ?? s.warehouse} → {to?.city ?? "Lagos"}, {to?.country ?? "NG"}
             </h1>
           </div>
