@@ -18,10 +18,10 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const user = await requireStaff();
   return (
     <div className="flex min-h-dvh flex-col bg-mist">
-      <header className="bg-navy">
+      <header className="bg-brand">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <Logo tone="light" href="/admin" />
+            <Logo tone="dark" href="/admin" />
             <span className="chip bg-gold text-navy">Admin</span>
           </div>
           <div className="flex items-center gap-3 text-sm text-white/70">

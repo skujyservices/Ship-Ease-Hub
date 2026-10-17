@@ -36,6 +36,23 @@ Sign up with the email you set as `ADMIN_EMAIL` to get the admin panel at `/admi
 9. Set your markup and fees in Admin → Settings.
 10. Have a lawyer review `/terms`.
 
+## Brand
+
+Everything follows the Ship Ease Hub Visual Identity guide.
+
+- **Logo:** `src/components/Logo.tsx` draws every variation (`Logo` = mark + SEH, `LogoMark`, `LogoLockup` = SHIP / EASE HUB, `LogoStacked`, `LogoBadge`) from vector outlines taken directly from the guide (`src/components/brand/logoArt.ts`). Pass `tone="dark"` on dark backgrounds.
+- **App icon:** Cool Silver tile with the purple mark (`public/icon*.png`, `public/icon.svg`, `public/apple-touch-icon.png`).
+- **Colours:** tokens in `src/app/globals.css` (`navy`, `purple`, `cyan`, `silver`, `gold`, `ink`), plus `bg-brand` (navy→purple), `stripe` (purple→gold accent) and `bg-grid`.
+- **Shapes:** `bar-cut` gives any bar the logo's angled left end (timeline, stepper); `LineMotif` is the guide's construction-line pattern.
+
+### Brand fonts
+
+Filson Pro (primary) is a paid font, so headings use Outfit until it's licensed. Once you buy a Filson Pro **web** licence:
+1. Put the `.woff2` files in `public/fonts/`.
+2. Add `@font-face` rules for `"Filson Pro"` at the top of `globals.css`.
+
+Headings switch over automatically because `--font-display` lists Filson first. Body text uses Inter (the secondary font, free).
+
 ## Where things are
 
 | Path | What |

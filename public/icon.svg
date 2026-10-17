@@ -1,7 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#00002E"/>
-  <!-- Three slanted bars: air, sea, land moving forward -->
-  <path d="M150 360 L214 152 H262 L198 360 Z" fill="#3C15C8"/>
-  <path d="M232 360 L296 152 H344 L280 360 Z" fill="#16C7D9"/>
-  <path d="M314 360 L378 152 H402 L338 360 Z" fill="#FFFFFF"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#C7CBD6"/><svg x="106.0" y="174.2" width="300" height="171.5" viewBox="145.42 258.67 59.2 33.85"><path fill="#3C15C8" fill-rule="evenodd" transform="matrix(1,0,0,-1,0,551.16)" d="M161.5572 280.0681H204.6203V271.0616H166.3679Z"/><path fill="#3C15C8" fill-rule="evenodd" transform="matrix(1,0,0,-1,0,551.16)" d="M145.423 292.4881H199.6384V283.4816H150.2337Z"/><path fill="#3C15C8" fill-rule="evenodd" transform="matrix(1,0,0,-1,0,551.16)" d="M160.5144 267.6481H194.6041V258.6416H165.325Z"/></svg></svg>

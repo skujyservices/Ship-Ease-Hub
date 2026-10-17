@@ -7,7 +7,7 @@ import { ServiceWorker } from "@/components/ServiceWorker";
 export default async function AppLayout({ children }: LayoutProps<"/app">) {
   const user = await requireUser("/app");
   return (
-    <div className="flex min-h-dvh flex-col bg-mist">
+    <div className="bg-grid flex min-h-dvh flex-col">
       <header className="sticky top-0 z-30 border-b border-silver/60 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
           <Logo href="/app/shipments" />

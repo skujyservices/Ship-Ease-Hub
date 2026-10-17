@@ -1,24 +1,62 @@
 @import "tailwindcss";
 
-/* Ship Ease Hub brand tokens (see docs/product-spec.md) */
+/*
+ * Ship Ease Hub brand tokens, from the Visual Identity (p.6 Colour Directions, p.9 Typography).
+ * Navy + Royal Purple carry the brand; Cyan is the energy/action accent; Cool Silver is the
+ * logistics neutral; Gold is used sparingly (highlights, premium, accent stripe).
+ */
 @theme {
-  --color-navy: #00002e;
-  --color-purple: #3c15c8;
+  --color-navy: #00002e; /* Midnight Navy */
+  --color-purple: #3c15c8; /* Royal Purple */
   --color-purple-600: #3211a8;
-  --color-cyan: #16c7d9;
-  --color-silver: #c7cbd6;
-  --color-gold: #d4af37;
-  --color-ink: #0a0a0a;
+  --color-cyan: #16c7d9; /* Connectivity Cyan */
+  --color-silver: #c7cbd6; /* Cool Silver */
+  --color-gold: #d4af37; /* Gold */
+  --color-ink: #0a0a0a; /* Deep Black */
   --color-mist: #f4f5f8;
   --color-danger: #c62828;
   --color-success: #13795b;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* Filson Pro is the primary face; it is used automatically once licensed web files are added */
+  --font-display: "Filson Pro", var(--font-outfit), var(--font-inter), ui-sans-serif, sans-serif;
 }
 
 body {
   background: #ffffff;
   color: var(--color-ink);
   font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+/* Dark brand surface: navy into purple (guide p.20) */
+@utility bg-brand {
+  background-color: var(--color-navy);
+  background-image: linear-gradient(170deg, #00002e 35%, #1d0b78 75%, #3c15c8 125%);
+}
+
+/* Signature accent stripe: purple into gold (business card, letterhead) */
+@utility stripe {
+  background-image: linear-gradient(90deg, #3c15c8 0%, #3c15c8 35%, #d4af37 100%);
+}
+
+/* Light pages sit on a faint layout grid (guide p.12, p.17) */
+@utility bg-grid {
+  background-color: var(--color-mist);
+  background-image:
+    linear-gradient(rgb(0 0 46 / 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(0 0 46 / 0.035) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* The logo's bar: square right end, left end cut at the mark's angle */
+@utility bar-cut {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0.32rem 100%);
 }
 
 /* Shared form + button primitives, kept small on purpose */

@@ -419,7 +419,7 @@ function Stepper({ step, onJump }: { step: number; onJump: (s: number) => void }
       {STEPS.map((label, i) => (
         <li key={label} className="flex-1">
           <button type="button" onClick={() => onJump(i)} className="w-full text-left" aria-current={i === step ? "step" : undefined}>
-            <div className={`h-1.5 -skew-x-[24deg] rounded-sm ${i < step ? "bg-purple" : i === step ? "bg-cyan" : "bg-silver/60"}`} />
+            <div className={`bar-cut h-1.5 ${i < step ? "bg-purple" : i === step ? "bg-cyan" : "bg-silver/60"}`} />
             <span className={`mt-1 hidden text-[11px] font-semibold uppercase tracking-wide sm:block ${i <= step ? "text-navy" : "text-navy/40"}`}>{label}</span>
           </button>
         </li>
