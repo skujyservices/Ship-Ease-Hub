@@ -23,7 +23,7 @@ export function PhaseBars({ status }: { status: string }) {
       {labels.map((label, i) => (
         <div key={label} className="flex flex-col items-start gap-1">
           <div
-            className={`h-2.5 w-14 -skew-x-[24deg] rounded-sm ${
+            className={`bar-cut h-2.5 w-14 ${
               i < phase ? (failed && i === phase - 1 ? "bg-danger" : i === phase - 1 ? "bg-cyan" : "bg-purple") : "bg-silver/60"
             }`}
           />

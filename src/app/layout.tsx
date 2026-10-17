@@ -1,15 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 
-// Filson is the brand's primary face but needs a web licence; Inter (secondary, free) until then.
+// Brand type (guide p.9): Filson Pro primary, Inter secondary.
+// Filson is a paid font; until a web licence is bought, Outfit (free, geometric) stands in
+// for headings. See README → "Brand fonts" to switch to Filson.
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
+const display = Outfit({ variable: "--font-outfit", subsets: ["latin"], weight: ["300", "400", "500", "600", "700"] });
 
 export const metadata: Metadata = {
-  title: { default: "Ship Ease Hub", template: "%s · Ship Ease Hub" },
-  description: "Ship from Nigeria to the world, and shop from the USA, UK and China to Nigeria.",
-  icons: { icon: "/icon.svg", apple: "/icon-192.png" },
-  appleWebApp: { capable: true, title: "Ship Ease Hub", statusBarStyle: "default" },
+  title: { default: "Ship Ease Hub · Modern Logistics & Shipping Solution", template: "%s · Ship Ease Hub" },
+  description: "Ship from Nigeria to the world, and shop from the USA, UK and China to Nigeria. Movement made easy.",
+  metadataBase: new URL(process.env.APP_URL ?? "https://www.shipeasehub.com"),
+  icons: { icon: "/icon.svg", apple: "/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "Ship Ease Hub", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {
@@ -20,7 +24,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+    <html lang="en" className={`${inter.variable} ${display.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );

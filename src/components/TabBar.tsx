@@ -41,7 +41,7 @@ export function TabBar() {
           t.primary ? (
             <Link key={t.href} href={t.href} className="-mt-5 flex flex-col items-center" aria-current={active(t.href) ? "page" : undefined}>
               <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple shadow-lg shadow-purple/30">
-                <LogoMark className="h-6 w-7 text-white" />
+                <LogoMark className="h-5 w-auto" color="#FFFFFF" />
               </span>
               <span className="mt-1 text-[11px] font-semibold text-navy">Ship</span>
             </Link>
