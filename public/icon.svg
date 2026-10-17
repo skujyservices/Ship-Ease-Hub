@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#00002E"/>
+  <!-- Three slanted bars: air, sea, land moving forward -->
+  <path d="M150 360 L214 152 H262 L198 360 Z" fill="#3C15C8"/>
+  <path d="M232 360 L296 152 H344 L280 360 Z" fill="#16C7D9"/>
+  <path d="M314 360 L378 152 H402 L338 360 Z" fill="#FFFFFF"/>
+</svg>
