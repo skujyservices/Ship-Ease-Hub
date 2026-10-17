@@ -1,0 +1,270 @@
+// Ship Ease Hub data model. Money is stored in minor units (kobo / pence / cents).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  STAFF
+  ADMIN
+}
+
+enum ShipmentKind {
+  OUTBOUND // Nigeria -> world (and domestic), booked on Terminal Africa
+  INBOUND // USA / UK / China -> Nigeria, handled by consolidator partners
+}
+
+enum PaymentProvider {
+  PAYSTACK
+  STRIPE
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum PaymentPurpose {
+  SHIPMENT
+  STORAGE_FEE
+  PROCUREMENT
+  WEIGHT_ADJUSTMENT
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  phone        String?
+  name         String
+  passwordHash String
+  role         Role     @default(CUSTOMER)
+  suiteId      String   @unique // e.g. SEH-10482, printed on foreign warehouse addresses
+  businessName String?
+  createdAt    DateTime @default(now())
+
+  addresses     SavedAddress[]
+  shipments     Shipment[]
+  payments      Payment[]
+  packages      Package[]
+  procurements  ProcurementRequest[]
+  pushSubs      PushSubscription[]
+}
+
+model SavedAddress {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label             String?
+  firstName         String
+  lastName          String
+  email             String
+  phone             String
+  line1             String
+  line2             String?
+  city              String
+  state             String
+  country           String // ISO-2
+  zip               String
+  terminalAddressId String?
+  createdAt         DateTime @default(now())
+}
+
+model Shipment {
+  id        String       @id @default(cuid())
+  code      String       @unique // public tracking code, e.g. SEH-7K3M9Q
+  kind      ShipmentKind
+  userId    String?
+  user      User?        @relation(fields: [userId], references: [id])
+  status    String // see src/lib/status.ts
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  // Snapshot of what the customer entered
+  fromAddress Json?
+  toAddress   Json?
+  parcels     Json?
+  purpose     String?
+
+  // Terminal Africa references (outbound)
+  terminalShipmentId    String? @unique
+  terminalFromAddressId String?
+  terminalToAddressId   String?
+  terminalParcelIds     String[]
+  rates                 Json? // quoted rates incl. duty + our price
+  selectedRate          Json?
+  pickupOption          String?
+  dropoffId             String?
+  pickupDate            String?
+  withInsurance         Boolean @default(false)
+  insuranceId           String?
+  regulatoryRequestId   String?
+  regulatoryDocs        Json? // { available: [...], selected: [...], purchased: [...] }
+
+  // Price we charge (minor units)
+  pricing      Json? // breakdown lines
+  totalMinor   Int?
+  currency     String  @default("NGN")
+
+  // Fulfilment details
+  carrierName    String?
+  carrierId      String?
+  trackingNumber String?
+  trackingUrl    String?
+  carrierTrackingUrl String?
+  labelUrl       String?
+  invoiceUrl     String?
+  podUrl         String?
+  pickupId       String?
+  bookingError   String?
+
+  // Inbound (Shop & Ship)
+  warehouse        String? // US | GB | CN
+  arrivedNigeriaAt DateTime?
+  pickupCode       String?   @unique
+  collectedAt      DateTime?
+  disposedAt       DateTime?
+  storageFeeMinor  Int       @default(0)
+
+  events          ShipmentEvent[]
+  payments        Payment[]
+  packages        Package[]
+  reconciliations Reconciliation[]
+  claims          Claim[]
+
+  @@index([userId, createdAt])
+}
+
+model ShipmentEvent {
+  id          String   @id @default(cuid())
+  shipmentId  String
+  shipment    Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  status      String
+  description String
+  location    String?
+  occurredAt  DateTime
+  source      String   @default("system") // system | terminal | staff
+  createdAt   DateTime @default(now())
+
+  @@unique([shipmentId, status, occurredAt])
+}
+
+model Payment {
+  id          String          @id @default(cuid())
+  reference   String          @unique
+  provider    PaymentProvider
+  purpose     PaymentPurpose
+  status      PaymentStatus   @default(PENDING)
+  amountMinor Int
+  currency    String
+  userId      String
+  user        User            @relation(fields: [userId], references: [id])
+  shipmentId  String?
+  shipment    Shipment?       @relation(fields: [shipmentId], references: [id])
+  procurementId String?
+  raw         Json?
+  paidAt      DateTime?
+  refundedAt  DateTime?
+  createdAt   DateTime        @default(now())
+}
+
+model Reconciliation {
+  id                 String   @id @default(cuid())
+  terminalId         String   @unique
+  shipmentId         String
+  shipment           Shipment @relation(fields: [shipmentId], references: [id])
+  chargeType         String
+  oldCostMinor       Int
+  newCostMinor       Int
+  extraChargeMinor   Int
+  isCharged          Boolean
+  voided             Boolean  @default(false)
+  customerPaid       Boolean  @default(false)
+  raw                Json
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Claim {
+  id          String   @id @default(cuid())
+  terminalId  String   @unique
+  shipmentId  String
+  shipment    Shipment @relation(fields: [shipmentId], references: [id])
+  reason      String
+  description String
+  status      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Durable inbox for incoming webhooks (Terminal, Paystack, Stripe)
+model WebhookEvent {
+  id          String    @id @default(cuid())
+  source      String
+  eventKey    String    @unique
+  event       String
+  payload     Json
+  processedAt DateTime?
+  error       String?
+  createdAt   DateTime  @default(now())
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+// ---- Inbound (Shop & Ship / Buy for me) ----
+
+model Package {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  warehouse     String // US | GB | CN
+  status        String // EXPECTED | RECEIVED | SHIPPED
+  store         String?
+  storeTracking String?
+  description   String
+  declaredValue Int? // minor units, origin currency
+  weightKg      Float?
+  lengthCm      Float?
+  widthCm       Float?
+  heightCm      Float?
+  photos        String[]
+  shipmentId    String?
+  shipment      Shipment? @relation(fields: [shipmentId], references: [id])
+  receivedAt    DateTime?
+  createdAt     DateTime  @default(now())
+}
+
+model ProcurementRequest {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  warehouse String
+  items     Json // [{ url, variant, quantity, notes }]
+  status    String // REQUESTED | QUOTED | PAID | PURCHASED | CANCELLED
+  quote     Json?
+  quoteExpiresAt DateTime?
+  storeOrderRef  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

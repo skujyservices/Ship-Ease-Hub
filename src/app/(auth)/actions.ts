@@ -1,0 +1,58 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import bcrypt from "bcryptjs";
+import { z } from "zod";
+import { db } from "@/lib/db";
+import { createSession, destroySession, newSuiteId } from "@/lib/auth";
+
+export type AuthState = { error?: string } | undefined;
+
+const safeNext = (next: FormDataEntryValue | null) => {
+  const n = typeof next === "string" ? next : "";
+  return n.startsWith("/") && !n.startsWith("//") ? n : "/app";
+};
+
+const signupSchema = z.object({
+  name: z.string().trim().min(2, "Enter your full name"),
+  email: z.email("Enter a valid email").transform((e) => e.toLowerCase()),
+  phone: z.string().trim().min(7, "Enter your WhatsApp number with country code, e.g. +234…"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export async function signup(_: AuthState, form: FormData): Promise<AuthState> {
+  const parsed = signupSchema.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { name, email, phone, password } = parsed.data;
+
+  if (await db.user.findUnique({ where: { email } })) return { error: "An account with this email already exists. Sign in instead." };
+
+  // The account whose email matches ADMIN_EMAIL becomes the admin, so the business can set itself up.
+  const isAdmin = Boolean(process.env.ADMIN_EMAIL) && email === process.env.ADMIN_EMAIL!.toLowerCase();
+  const user = await db.user.create({
+    data: {
+      name,
+      email,
+      phone,
+      passwordHash: await bcrypt.hash(password, 12),
+      suiteId: await newSuiteId(),
+      role: isAdmin ? "ADMIN" : "CUSTOMER",
+    },
+  });
+  await createSession(user);
+  redirect(safeNext(form.get("next")));
+}
+
+export async function login(_: AuthState, form: FormData): Promise<AuthState> {
+  const email = String(form.get("email") ?? "").trim().toLowerCase();
+  const password = String(form.get("password") ?? "");
+  const user = await db.user.findUnique({ where: { email } });
+  if (!user || !(await bcrypt.compare(password, user.passwordHash))) return { error: "Email or password is incorrect." };
+  await createSession(user);
+  redirect(safeNext(form.get("next")) === "/app" && user.role !== "CUSTOMER" ? "/admin" : safeNext(form.get("next")));
+}
+
+export async function logout() {
+  await destroySession();
+  redirect("/");
+}
