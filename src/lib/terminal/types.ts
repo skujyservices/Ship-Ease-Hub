@@ -114,6 +114,8 @@ export type Rate = Extra & {
   delivery_eta?: string;
   pickup_time?: string;
   includes_insurance?: boolean;
+  includes_duties?: boolean;
+  dropoff_required?: boolean;
   insurance_fee?: number;
   insurance_coverage?: number;
   pickup_options?: PickupOption[];
@@ -149,7 +151,8 @@ export type Carrier = Extra & {
 };
 
 export type DropoffLocation = Extra & {
-  drop_off_location_id: string;
+  dropoff_id?: string; // what the API actually returns
+  drop_off_location_id?: string; // what the docs show
   address: string;
   carrier: string;
   city: string;

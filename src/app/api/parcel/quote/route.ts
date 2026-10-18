@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { clientIp, handle, rateLimit } from "@/lib/http";
+import { HttpError, clientIp, handle, rateLimit } from "@/lib/http";
+import { TerminalError } from "@/lib/terminal/client";
 import { quoteSchema, type AddressForm } from "@/lib/outbound/schema";
 import { createQuote } from "@/lib/outbound/service";
 import { quoteView } from "@/lib/outbound/view";
@@ -13,7 +14,10 @@ export const POST = handle(async (req: Request) => {
   rateLimit(`quote:${user?.id ?? clientIp(req)}`, user ? 60 : 10, 3600_000);
   const body = await req.json();
   const input = quoteSchema.parse(body);
-  const shipment = await createQuote(input, user?.id ?? null);
+  const shipment = await createQuote(input, user?.id ?? null).catch((e: Error) => {
+    if (e instanceof TerminalError) throw e;
+    throw new HttpError(400, e.message); // e.g. a phone number that doesn't match its country
+  });
 
   if (user) {
     const toSave: AddressForm[] = [];

@@ -10,7 +10,7 @@ import { AddressFields, emptyAddress, useCountries, type SavedAddress } from "@/
 import type { PackagingOption } from "@/components/parcel/ParcelEditor";
 
 type Line = { line: number; row?: BulkRow; error?: string };
-type Priced = { shipmentId: string; code: string; carrier: string; eta?: string; totalMinor: number } | { error: string };
+type Priced = { shipmentId: string; code: string; carrier: string; eta?: string; totalMinor: number; dropoffAddress?: string } | { error: string };
 
 export function BulkClient({ saved }: { saved: SavedAddress[] }) {
   const countries = useCountries();
@@ -137,7 +137,10 @@ export function BulkClient({ saved }: { saved: SavedAddress[] }) {
                       <td className="px-3 py-2">{l.row ? `${l.row.item.quantity} × ${l.row.item.name}, ${l.row.item.weight} kg` : ""}</td>
                       <td className="px-3 py-2">
                         {!p ? (running && l.row ? <span className="text-navy/40">…</span> : "") : "error" in p ? <span className="text-danger">{p.error}</span> : (
-                          <Link href={`/app/ship/parcel?q=${p.shipmentId}`} className="text-purple" title="Open to change carrier or add insurance">{p.carrier}</Link>
+                          <>
+                            <Link href={`/app/ship/parcel?q=${p.shipmentId}`} className="text-purple" title="Open to change carrier or add insurance">{p.carrier}</Link>
+                            {p.dropoffAddress && <span className="block text-xs text-navy/55">Drop off: {p.dropoffAddress}</span>}
+                          </>
                         )}
                       </td>
                       <td className="px-3 py-2 text-right font-medium">{p && !("error" in p) ? formatMoney(p.totalMinor) : ""}</td>

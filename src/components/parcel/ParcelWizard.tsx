@@ -60,8 +60,6 @@ export function ParcelWizard({
   const [dropoffId, setDropoffId] = useState("");
   const [dates, setDates] = useState<string[] | null>(null);
   const [pickupDate, setPickupDate] = useState("");
-  const [docs, setDocs] = useState<{ type: string; name: string; minor: number; free: boolean }[] | null>(null);
-  const [chosenDocs, setChosenDocs] = useState<string[]>([]);
   const [accept, setAccept] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -158,9 +156,6 @@ export function ParcelWizard({
     setDropoffs(null);
     setDates(null);
     go(4);
-    if (quote?.international && docs === null) {
-      api<typeof docs>(`/api/parcel/${quote.id}/documents`, {}).then((d) => setDocs(d ?? [])).catch(() => setDocs([]));
-    }
   }
 
   // Load drop-off points / pickup dates when those options are picked
@@ -187,7 +182,7 @@ export function ParcelWizard({
         dropoffId: option === "dropoff" ? dropoffId : undefined,
         pickupDate: option === "scheduled_pickup" ? pickupDate : undefined,
         insurance,
-        documents: chosenDocs,
+        documents: [],
       });
       setQuote(q);
       go(5);
@@ -347,31 +342,9 @@ export function ParcelWizard({
           </label>
 
           {quote.international && (
-            <div className="mt-6">
-              <p className="label">Customs documents</p>
-              {docs === null ? (
-                <p className="text-sm text-navy/60">Checking whether your goods need extra documents…</p>
-              ) : docs.length === 0 ? (
-                <p className="text-sm text-navy/60">No extra documents needed for these goods.</p>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-xs text-navy/60">The destination may require these for your goods. We&apos;ll prepare them for you.</p>
-                  {docs.map((d) => (
-                    <label key={d.type} className="flex items-center justify-between rounded-xl border border-silver p-3 text-sm">
-                      <span className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={chosenDocs.includes(d.type)}
-                          onChange={(e) => setChosenDocs(e.target.checked ? [...chosenDocs, d.type] : chosenDocs.filter((t) => t !== d.type))}
-                        />
-                        {d.name}
-                      </span>
-                      <span className="text-navy/70">{d.free ? "Free" : formatMoney(d.minor)}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
+            <p className="mt-6 rounded-2xl bg-mist px-4 py-3 text-xs text-navy/65">
+              If the destination needs extra customs documents for your goods (for example an FDA notice for food going to the USA), we&apos;ll tell you after booking and can prepare them for you.
+            </p>
           )}
 
           <Nav onBack={() => go(3)} onNext={confirmExtras} nextLabel="Review" busy={busy} />

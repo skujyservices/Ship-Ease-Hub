@@ -8,7 +8,7 @@ import { notifyUser } from "@/lib/notify";
 import { WAREHOUSES, type WarehouseCode } from "@/lib/settings";
 import { collect, dispatchInbound, markReadyForPickup } from "@/lib/inbound/service";
 import { markPurchased, quoteInputSchema, quoteRequest } from "@/lib/inbound/procurement";
-import { refundPayment } from "@/lib/checkout";
+import { tryRefund } from "@/lib/checkout";
 import type { ActionResult } from "../actions";
 
 const fail = (e: unknown): ActionResult => ({ error: e instanceof z.ZodError ? e.issues[0].message : e instanceof Error ? e.message : String(e) });
@@ -155,13 +155,7 @@ export async function markBought(id: string, _: ActionResult, form: FormData): P
 export async function cancelProcurement(id: string): Promise<ActionResult> {
   await requireStaff();
   const paid = await db.payment.findFirst({ where: { procurementId: id, status: "SUCCESS" } });
-  if (paid) {
-    try {
-      await refundPayment(paid);
-    } catch (e) {
-      return fail(e);
-    }
-  }
+  const refund = paid ? await tryRefund(paid) : { ok: true as const };
   const r = await db.procurementRequest.update({ where: { id }, data: { status: "CANCELLED" } });
   await notifyUser(r.userId, {
     title: "Your Buy for me request was cancelled",
@@ -169,5 +163,5 @@ export async function cancelProcurement(id: string): Promise<ActionResult> {
     url: `/app/ship/buy/${id}`,
   });
   revalidatePath(`/admin/procurement/${id}`);
-  return { ok: "Cancelled" };
+  return refund.ok ? { ok: paid ? "Cancelled and refunded" : "Cancelled" } : { ok: `Cancelled. Refund failed (${refund.error}). Refund ${paid!.reference} manually.` };
 }
