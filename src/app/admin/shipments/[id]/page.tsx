@@ -10,7 +10,7 @@ import { StatusChip } from "@/components/Status";
 import { EventList } from "@/components/EventList";
 import { ActionButton } from "../../ActionButton";
 import { adminCancelAndRefund, adminRefresh, replayShipmentWebhook, retryBooking } from "../../actions";
-import { ErrorNote, PageTitle, safe } from "../../ui";
+import { PageTitle, safe } from "../../ui";
 
 export default async function AdminShipment({ params }: PageProps<"/admin/shipments/[id]">) {
   const { id } = await params;
@@ -79,7 +79,7 @@ export default async function AdminShipment({ params }: PageProps<"/admin/shipme
           <p>Tracking: <b>{s.trackingNumber ?? "–"}</b></p>
           <p>Insurance: <b>{s.withInsurance ? s.insuranceId ?? "pending" : "no"}</b></p>
           <div className="flex flex-wrap gap-2 pt-2">
-            {s.labelUrl && <a className="btn-ghost" href={s.labelUrl} target="_blank" rel="noreferrer">Label</a>}
+            {s.labelUrl && <a className="btn-ghost" href={`/api/parcel/${s.id}/label`} target="_blank" rel="noreferrer">Label</a>}
             {s.invoiceUrl && <a className="btn-ghost" href={s.invoiceUrl} target="_blank" rel="noreferrer">Invoice</a>}
             {s.trackingUrl && <a className="btn-ghost" href={s.trackingUrl} target="_blank" rel="noreferrer">Terminal tracking</a>}
           </div>
@@ -101,7 +101,7 @@ export default async function AdminShipment({ params }: PageProps<"/admin/shipme
         </div>
         <div className="card text-sm">
           <h2 className="mb-3 font-bold text-navy">Terminal webhook deliveries</h2>
-          <ErrorNote error={deliveries.error} />
+          {deliveries.error && <p className="mb-3 text-navy/60">Not available yet. Terminal lists deliveries once a webhook is registered (Admin → Webhooks), which needs the app online.</p>}
           {deliveryEvents.length === 0 ? (
             <p className="text-navy/60">None yet.</p>
           ) : (

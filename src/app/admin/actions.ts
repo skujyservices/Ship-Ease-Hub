@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import * as terminal from "@/lib/terminal/api";
 import { processTerminalEvent } from "@/lib/terminal/events";
 import { bookPaidShipment, cancelOnTerminal, refreshTracking } from "@/lib/outbound/service";
-import { refundPayment } from "@/lib/checkout";
+import { tryRefund } from "@/lib/checkout";
 import { saveSettings, settingsSchema } from "@/lib/settings";
 import { STATUS } from "@/lib/status";
 
@@ -46,8 +46,9 @@ export async function adminCancelAndRefund(id: string): Promise<ActionResult> {
     if (s.status !== STATUS.BOOKING_FAILED && s.terminalShipmentId) await cancelOnTerminal(id);
     await db.shipment.update({ where: { id }, data: { status: STATUS.CANCELLED } });
     const payment = await db.payment.findFirst({ where: { shipmentId: id, purpose: "SHIPMENT", status: "SUCCESS" } });
-    if (payment) await refundPayment(payment);
-    return payment ? "Cancelled and refunded" : "Cancelled";
+    if (!payment) return "Cancelled";
+    const refund = await tryRefund(payment);
+    return refund.ok ? "Cancelled and refunded" : `Cancelled. Refund failed (${refund.error}). Refund ${payment.reference} manually in ${payment.provider === "PAYSTACK" ? "Paystack" : "Stripe"}.`;
   }, `/admin/shipments/${id}`);
 }
 

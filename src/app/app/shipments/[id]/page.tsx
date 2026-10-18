@@ -11,6 +11,7 @@ import { PhaseBars, StatusChip } from "@/components/Status";
 import { EventList } from "@/components/EventList";
 import { ShipmentActions } from "./ShipmentActions";
 import { InboundPay, PayStorageFee } from "./InboundActions";
+import { DocumentsPanel } from "./DocumentsPanel";
 import QRCode from "qrcode";
 import { storageState } from "@/lib/inbound/service";
 import { BRAND } from "@/lib/brand";
@@ -22,7 +23,7 @@ type Addr = { first_name: string; last_name: string; line1: string; city: string
 export default async function ShipmentPage({ params, searchParams }: PageProps<"/app/shipments/[id]">) {
   const user = await requireUser("/app/shipments");
   const { id } = await params;
-  const { payment } = await searchParams;
+  const { payment, label } = await searchParams;
 
   const s = await db.shipment.findUnique({
     where: { id },
@@ -39,7 +40,9 @@ export default async function ShipmentPage({ params, searchParams }: PageProps<"
   const from = s.fromAddress as Addr | null;
   const to = s.toAddress as Addr | null;
   const pricing = (s.pricing as PriceLine[] | null) ?? [];
-  const docs = (s.regulatoryDocs as { purchased?: { name: string; document_url?: string }[] } | null)?.purchased ?? [];
+  const regDocs = s.regulatoryDocs as { available?: { type: string; name: string; minor: number; free: boolean }[]; purchased?: { name: string; document_url?: string }[] } | null;
+  const docs = regDocs?.purchased ?? [];
+  const docsToBuy = !docs.length ? (regDocs?.available ?? []) : [];
   const settings = await getSettings();
   const adjustment = s.reconciliations[0];
   const inbound = s.kind === "INBOUND";
@@ -48,7 +51,7 @@ export default async function ShipmentPage({ params, searchParams }: PageProps<"
   const rules = `I'll collect from ${BRAND.lagosPickup}. It's free for ${settings.storageFreeDays} days after I'm notified, then ${formatMoney(settings.storageFeePerDayMinor)}/day, and items not collected after day ${settings.storageMaxDays} are disposed of.`;
 
   const links = [
-    { href: s.labelUrl, label: "Shipping label" },
+    { href: s.labelUrl ? `/api/parcel/${s.id}/label` : null, label: "Shipping label" },
     { href: s.invoiceUrl, label: "Commercial invoice" },
     { href: s.podUrl, label: "Proof of delivery" },
     ...docs.map((d) => ({ href: d.document_url, label: d.name })),
@@ -59,6 +62,7 @@ export default async function ShipmentPage({ params, searchParams }: PageProps<"
       <Link href="/app/shipments" className="text-sm font-semibold text-purple">← Shipments</Link>
 
       {payment === "paid" && <Banner tone="good">{inbound ? "Payment received. Thank you!" : "Payment received. We're booking your shipment now."}</Banner>}
+      {label === "pending" && <Banner tone="warn">The carrier hasn&apos;t issued the label yet. We&apos;ll notify you as soon as it&apos;s ready. Please try again later.</Banner>}
       {payment === "failed" && <Banner tone="bad">Your payment didn&apos;t go through. You weren&apos;t charged.</Banner>}
       {payment === "pending" && <Banner tone="warn">We&apos;re still confirming your payment. This page will update shortly.</Banner>}
 
@@ -135,6 +139,10 @@ export default async function ShipmentPage({ params, searchParams }: PageProps<"
           </div>
         )}
       </div>
+
+      {docsToBuy.length > 0 && [STATUS.BOOKED, STATUS.PICKUP_SCHEDULED, STATUS.IN_TRANSIT].includes(s.status as never) && (
+        <DocumentsPanel id={s.id} docs={docsToBuy} />
+      )}
 
       {qr && (
         <div className="card grid items-center gap-6 sm:grid-cols-[auto_1fr]">

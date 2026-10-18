@@ -37,6 +37,7 @@ enum PaymentPurpose {
   STORAGE_FEE
   PROCUREMENT
   WEIGHT_ADJUSTMENT
+  DOCUMENTS // customs/regulatory documents after booking
 }
 
 model User {

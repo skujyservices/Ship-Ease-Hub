@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { HttpError, handle, shipmentForRequest } from "@/lib/http";
 import { cancelOnTerminal } from "@/lib/outbound/service";
-import { refundPayment } from "@/lib/checkout";
+import { tryRefund } from "@/lib/checkout";
 import { STATUS } from "@/lib/status";
 import { notifyUser } from "@/lib/notify";
 import { cancelInbound } from "@/lib/inbound/service";
@@ -25,7 +25,7 @@ export const POST = handle(async (_req: Request, ctx: RouteContext<"/api/parcel/
   else await db.shipment.update({ where: { id }, data: { status: STATUS.CANCELLED } });
 
   const payment = await db.payment.findFirst({ where: { shipmentId: id, purpose: "SHIPMENT", status: "SUCCESS" } });
-  if (payment) await refundPayment(payment);
+  if (payment) await tryRefund(payment); // a failed refund is flagged for staff; the cancellation stands
 
   if (shipment.userId)
     await notifyUser(shipment.userId, {

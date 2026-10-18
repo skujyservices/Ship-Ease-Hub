@@ -2,7 +2,7 @@ import "server-only";
 import type { Payment, PaymentPurpose } from "@prisma/client";
 import { db } from "./db";
 import { newReference, paystackInitialize, paystackRefund, paystackVerify, stripeCheckout, stripeRefund, stripeVerify } from "./payments";
-import { bookPaidShipment } from "./outbound/service";
+import { bookPaidShipment, purchaseSelectedDocuments } from "./outbound/service";
 import { markInboundPaid } from "./inbound/service";
 import { markProcurementPaid } from "./inbound/procurement";
 import { sendEmail } from "./notify";
@@ -23,6 +23,7 @@ export async function startCheckout(input: {
   procurementId?: string;
   batchId?: string;
   shipmentIds?: string[]; // batch payments: exactly what this payment covers
+  docTypes?: string[]; // DOCUMENTS payments: which documents to buy
   returnPath: string;
 }) {
   const reference = newReference("SEH");
@@ -59,7 +60,7 @@ export async function startCheckout(input: {
       shipmentId: input.shipmentId,
       procurementId: input.procurementId,
       batchId: input.batchId,
-      raw: { ...(started.providerRef ? { sessionId: started.providerRef } : {}), ...(input.shipmentIds ? { shipmentIds: input.shipmentIds } : {}) },
+      raw: { ...(started.providerRef ? { sessionId: started.providerRef } : {}), ...(input.shipmentIds ? { shipmentIds: input.shipmentIds } : {}), ...(input.docTypes ? { docTypes: input.docTypes } : {}) },
     },
   });
   return started.redirectUrl;
@@ -121,6 +122,13 @@ async function fulfil(payment: Payment) {
     case "PROCUREMENT":
       if (payment.procurementId) await markProcurementPaid(payment.procurementId);
       break;
+    case "DOCUMENTS": {
+      const types = (payment.raw as { docTypes?: string[] } | null)?.docTypes ?? [];
+      const s = await db.shipment.findUniqueOrThrow({ where: { id: payment.shipmentId! } });
+      await db.shipment.update({ where: { id: s.id }, data: { regulatoryDocs: { ...((s.regulatoryDocs as object) ?? {}), selected: types } } });
+      await purchaseSelectedDocuments(s.id);
+      break;
+    }
   }
 
   const user = await db.user.findUnique({ where: { id: payment.userId }, select: { email: true } });
@@ -143,7 +151,21 @@ export const PURPOSE_LABEL: Record<PaymentPurpose, string> = {
   STORAGE_FEE: "Storage fee",
   PROCUREMENT: "Buy for me order",
   WEIGHT_ADJUSTMENT: "Weight adjustment",
+  DOCUMENTS: "Customs documents",
 };
+
+/** Refund, but never undo the action that caused it: a failed refund is recorded for staff to finish by hand. */
+export async function tryRefund(payment: Payment): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await refundPayment(payment);
+    return { ok: true };
+  } catch (e) {
+    const error = e instanceof Error ? e.message : String(e);
+    console.error("refund failed", payment.reference, error);
+    await db.payment.update({ where: { id: payment.id }, data: { raw: { ...((payment.raw as object) ?? {}), refundError: error } } });
+    return { ok: false, error };
+  }
+}
 
 export async function refundPayment(payment: Payment) {
   if (payment.status !== "SUCCESS") return;

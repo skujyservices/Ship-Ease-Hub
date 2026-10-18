@@ -11,9 +11,10 @@ export default async function CarriersPage() {
   const enabled = await safe(async () => {
     const wallet = await getWalletBalance();
     const user = await getUser(String(wallet.user));
-    return user.carriers as Record<Scope, { id: string }[]> | undefined;
+    // The API returns plain carrier IDs per scope (the docs show { id, name } objects); accept both
+    return user.carriers as Record<Scope, (string | { id: string })[]> | undefined;
   });
-  const isOn = (id: string, scope: Scope) => enabled.data?.[scope]?.some((c) => c.id === id);
+  const isOn = (id: string, scope: Scope) => enabled.data?.[scope]?.some((c) => (typeof c === "string" ? c : c.id) === id);
 
   return (
     <div>

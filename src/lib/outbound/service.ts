@@ -23,7 +23,7 @@ export type QuotedRate = {
   pickupTime?: string;
   shippingMinor: number; // Terminal's amount
   dutyMinor: number | null; // null = not applicable or could not be estimated
-  dutyStatus: "none" | "estimated" | "unavailable";
+  dutyStatus: "none" | "estimated" | "included" | "unavailable";
   insuranceIncluded: boolean;
   pickupOptions: PickupOption[];
   priorityPickupMinor?: number;
@@ -58,6 +58,29 @@ async function carrierSlug(rate: Rate): Promise<string | undefined> {
   return match?.slug;
 }
 
+// ---- Phone numbers: Terminal needs international format matching the address country ----
+let dialCodes: Map<string, string> | null = null;
+export async function internationalPhone(phone: string, country: string) {
+  const raw = phone.replace(/[\s()-]/g, "");
+  if (raw.startsWith("+")) return raw;
+  if (raw.startsWith("00")) return `+${raw.slice(2)}`;
+  if (!dialCodes) {
+    const list = await terminal.getCountries().catch(() => []);
+    dialCodes = new Map(list.map((c) => [c.isoCode, c.phonecode.replace(/\D/g, "")]));
+  }
+  const code = dialCodes.get(country);
+  if (!code) return raw;
+  if (raw.startsWith(code) && raw.length > code.length + 6) return `+${raw}`;
+  return `+${code}${raw.replace(/^0/, "")}`; // 08031234567 (NG) -> +2348031234567
+}
+
+function friendlyAddressError(e: unknown, who: "sender" | "receiver"): never {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (/phone/i.test(msg)) throw new Error(`The ${who}'s phone number doesn't look right for their country. Please check it, e.g. +44 7400 123456.`);
+  if (/email/i.test(msg)) throw new Error(`The ${who}'s email address doesn't look right.`);
+  throw new Error(`We couldn't use the ${who}'s address: ${msg}`);
+}
+
 // ---------------------------------------------------------------------------
 // 1. Quote: addresses → parcels → draft shipment → rates → duties → insurance
 // ---------------------------------------------------------------------------
@@ -66,10 +89,13 @@ export async function createQuote(input: QuoteInput, userId: string | null, batc
   const international = input.to.country !== "NG";
   const currency = "NGN" as const;
 
+  const fromInput = { ...input.from, phone: await internationalPhone(input.from.phone, input.from.country) };
+  const toInput = { ...input.to, phone: await internationalPhone(input.to.phone, input.to.country) };
   const [from, to] = await Promise.all([
-    terminal.createAddress({ ...input.from, is_residential: true }),
-    terminal.createAddress({ ...input.to, is_residential: true }),
+    terminal.createAddress({ ...fromInput, is_residential: true }).catch((e) => friendlyAddressError(e, "sender")),
+    terminal.createAddress({ ...toInput, is_residential: true }).catch((e) => friendlyAddressError(e, "receiver")),
   ]);
+  input = { ...input, from: fromInput, to: toInput };
 
   const parcels = await Promise.all(
     input.parcels.map((p) =>
@@ -126,8 +152,11 @@ export async function createQuote(input: QuoteInput, userId: string | null, batc
   const rates: QuotedRate[] = [];
   for (const r of rawRates) {
     const slug = await carrierSlug(r);
-    const dutyMinor = international ? (slug ? (dutyBySlug.get(slug) ?? null) : null) : null;
-    const shippingMinor = toMinor(r.amount);
+    // Some rates already include duties (includes_duties); never add the estimate on top
+    const dutyMinor = international && !r.includes_duties ? (slug ? (dutyBySlug.get(slug) ?? null) : null) : null;
+    // Terminal bills a per-shipment service fee on top of the carrier amount (seen in the wallet ledger)
+    const serviceFee = Number((r.metadata as { shipment_service_charge?: number } | undefined)?.shipment_service_charge ?? 0);
+    const shippingMinor = toMinor(r.amount + serviceFee);
     const priority = r.pickup_options?.find((o) => o.type === "priority_pickup");
     rates.push({
       rateId: r.rate_id,
@@ -140,7 +169,7 @@ export async function createQuote(input: QuoteInput, userId: string | null, batc
       pickupTime: r.pickup_time,
       shippingMinor,
       dutyMinor,
-      dutyStatus: !international ? "none" : dutyMinor === null ? "unavailable" : "estimated",
+      dutyStatus: !international ? "none" : r.includes_duties ? "included" : dutyMinor === null ? "unavailable" : "estimated",
       insuranceIncluded: Boolean(r.includes_insurance),
       pickupOptions: r.pickup_options?.length ? r.pickup_options : [{ type: "pickup" }],
       priorityPickupMinor: priority?.amount ? toMinor(priority.amount) : r.priority_pickup_fee ? toMinor(r.priority_pickup_fee) : undefined,
@@ -280,7 +309,16 @@ export async function bookPaidShipment(shipmentId: string) {
     if (shipment.pickupOption === "scheduled_pickup" && shipment.pickupDate) {
       await schedulePickupFor(shipment.id).catch((e) => console.error("schedule pickup failed", e));
     }
-    await purchaseSelectedDocuments(shipment.id).catch((e) => console.error("documents purchase failed", e));
+    if ((shipment.toAddress as { country?: string } | null)?.country !== "NG") {
+      // Terminal only analyses booked shipments, so this happens now, not at quote time
+      const docs = await analyzeDocuments(await db.shipment.findUniqueOrThrow({ where: { id: shipment.id } }));
+      if (docs?.length && shipment.userId)
+        await notifyUser(shipment.userId, {
+          title: `${shipment.code}: customs documents`,
+          body: `The destination may need ${docs.map((d) => d.name).join(", ")} for these goods. You can get them prepared from your shipment page.`,
+          url: `/app/shipments/${shipment.id}`,
+        });
+    }
 
     if (shipment.userId)
       await notifyUser(shipment.userId, {
@@ -296,7 +334,7 @@ export async function bookPaidShipment(shipmentId: string) {
   return db.shipment.findUniqueOrThrow({ where: { id: shipmentId } });
 }
 
-async function purchaseSelectedDocuments(shipmentId: string) {
+export async function purchaseSelectedDocuments(shipmentId: string) {
   const s = await db.shipment.findUniqueOrThrow({ where: { id: shipmentId } });
   const docs = s.regulatoryDocs as { selected?: string[] } | null;
   if (!s.regulatoryRequestId || !docs?.selected?.length) return;

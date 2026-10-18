@@ -13,6 +13,6 @@ export const GET = handle(async (req: NextRequest) => {
     city: p.get("city") ?? undefined,
   });
   return NextResponse.json(
-    list.map((d) => ({ id: d.drop_off_location_id, address: d.address, city: d.city, state: d.state, phone: d.phone })),
+    list.map((d) => ({ id: d.dropoff_id ?? d.drop_off_location_id, address: d.address, city: d.city, state: d.state, phone: d.phone })),
   );
 });
