@@ -5,8 +5,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // pooled connection the app uses (Supabase: port 6543, pgbouncer=true)
+  directUrl = env("DIRECT_URL") // direct connection for schema changes (Supabase: port 5432)
 }
 
 enum Role {

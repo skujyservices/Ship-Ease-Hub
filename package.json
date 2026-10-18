@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:push": "node --env-file-if-exists=.env.local node_modules/prisma/build/index.js db push && node --env-file-if-exists=.env.local scripts/enable-rls.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
