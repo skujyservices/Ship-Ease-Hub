@@ -15,11 +15,11 @@ Product decisions live in [docs/product-spec.md](docs/product-spec.md).
 ```bash
 npm install
 cp .env.example .env.local      # then fill it in (see below)
-npx prisma db push              # create the tables
+npm run db:push                 # create/update tables (+ lock them from Supabase's public API)
 npm run dev                     # http://localhost:3000
 ```
 
-No Postgres installed? `npx prisma dev` starts a local one and prints a `postgres://` URL. Add `&connection_limit=1&pgbouncer=true` to it.
+The database is Supabase (Connect → ORMs → Prisma gives `DATABASE_URL` and `DIRECT_URL`). Always change tables with `npm run db:push`: it also switches on Row Level Security, so Supabase's public Data API can't read the tables. For an offline database, `npx prisma dev` starts a local one; set both URLs to it.
 
 Sign up with the email you set as `ADMIN_EMAIL` to get the admin panel at `/admin`.
 
