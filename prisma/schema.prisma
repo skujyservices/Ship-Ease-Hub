@@ -40,22 +40,49 @@ enum PaymentPurpose {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  phone        String?
-  name         String
-  passwordHash String
-  role         Role     @default(CUSTOMER)
-  suiteId      String   @unique // e.g. SEH-10482, printed on foreign warehouse addresses
-  businessName String?
-  createdAt    DateTime @default(now())
+  id            String    @id @default(cuid())
+  email         String    @unique
+  phone         String?
+  name          String
+  passwordHash  String
+  role          Role      @default(CUSTOMER)
+  suiteId       String    @unique // e.g. SEH-10482, printed on foreign warehouse addresses
+  businessName  String?
+  ninVerifiedAt DateTime? // identity checked with Terminal (NIN, name must match)
+  ninName       String?
+  disabledAt    DateTime? // staff removed / account blocked
+  createdAt     DateTime  @default(now())
 
-  addresses     SavedAddress[]
-  shipments     Shipment[]
-  payments      Payment[]
-  packages      Package[]
-  procurements  ProcurementRequest[]
-  pushSubs      PushSubscription[]
+  addresses    SavedAddress[]
+  shipments    Shipment[]
+  payments     Payment[]
+  packages     Package[]
+  procurements ProcurementRequest[]
+  pushSubs     PushSubscription[]
+  batches      Batch[]
+  tokens       PasswordToken[]
+}
+
+// Staff invites and password resets (only a hash of the token is stored)
+model PasswordToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  purpose   String // invite | reset
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+// A group of outbound shipments booked together from a spreadsheet, paid in one go
+model Batch {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  name      String
+  shipments Shipment[]
+  createdAt DateTime   @default(now())
 }
 
 model SavedAddress {
@@ -94,7 +121,7 @@ model Shipment {
   purpose     String?
 
   // Terminal Africa references (outbound)
-  terminalShipmentId    String? @unique
+  terminalShipmentId    String?  @unique
   terminalFromAddressId String?
   terminalToAddressId   String?
   terminalParcelIds     String[]
@@ -103,35 +130,43 @@ model Shipment {
   pickupOption          String?
   dropoffId             String?
   pickupDate            String?
-  withInsurance         Boolean @default(false)
+  withInsurance         Boolean  @default(false)
   insuranceId           String?
   regulatoryRequestId   String?
   regulatoryDocs        Json? // { available: [...], selected: [...], purchased: [...] }
 
   // Price we charge (minor units)
-  pricing      Json? // breakdown lines
-  totalMinor   Int?
-  currency     String  @default("NGN")
+  pricing    Json? // breakdown lines
+  totalMinor Int?
+  currency   String @default("NGN")
 
   // Fulfilment details
-  carrierName    String?
-  carrierId      String?
-  trackingNumber String?
-  trackingUrl    String?
+  carrierName        String?
+  carrierId          String?
+  trackingNumber     String?
+  trackingUrl        String?
   carrierTrackingUrl String?
-  labelUrl       String?
-  invoiceUrl     String?
-  podUrl         String?
-  pickupId       String?
-  bookingError   String?
+  labelUrl           String?
+  invoiceUrl         String?
+  podUrl             String?
+  pickupId           String?
+  bookingError       String?
 
   // Inbound (Shop & Ship)
-  warehouse        String? // US | GB | CN
-  arrivedNigeriaAt DateTime?
-  pickupCode       String?   @unique
-  collectedAt      DateTime?
-  disposedAt       DateTime?
-  storageFeeMinor  Int       @default(0)
+  warehouse           String? // US | GB | CN
+  arrivedNigeriaAt    DateTime?
+  pickupCode          String?   @unique
+  readyAt             DateTime? // customer told to collect; storage clock starts
+  collectedAt         DateTime?
+  disposedAt          DateTime?
+  storageFeeMinor     Int       @default(0)
+  storageFeePaidMinor Int       @default(0)
+  consolidate         Boolean   @default(false)
+  chargeableKg        Float?
+  airwayBill          String? // partner's reference when shipped from origin
+
+  batchId String?
+  batch   Batch?  @relation(fields: [batchId], references: [id])
 
   events          ShipmentEvent[]
   payments        Payment[]
@@ -157,39 +192,41 @@ model ShipmentEvent {
 }
 
 model Payment {
-  id          String          @id @default(cuid())
-  reference   String          @unique
-  provider    PaymentProvider
-  purpose     PaymentPurpose
-  status      PaymentStatus   @default(PENDING)
-  amountMinor Int
-  currency    String
-  userId      String
-  user        User            @relation(fields: [userId], references: [id])
-  shipmentId  String?
-  shipment    Shipment?       @relation(fields: [shipmentId], references: [id])
+  id            String          @id @default(cuid())
+  reference     String          @unique
+  provider      PaymentProvider
+  purpose       PaymentPurpose
+  status        PaymentStatus   @default(PENDING)
+  amountMinor   Int
+  currency      String
+  userId        String
+  user          User            @relation(fields: [userId], references: [id])
+  shipmentId    String?
+  shipment      Shipment?       @relation(fields: [shipmentId], references: [id])
   procurementId String?
-  raw         Json?
-  paidAt      DateTime?
-  refundedAt  DateTime?
-  createdAt   DateTime        @default(now())
+  batchId       String?
+  raw           Json?
+  paidAt        DateTime?
+  fulfilledAt   DateTime? // set once what the payment bought has been actioned
+  refundedAt    DateTime?
+  createdAt     DateTime        @default(now())
 }
 
 model Reconciliation {
-  id                 String   @id @default(cuid())
-  terminalId         String   @unique
-  shipmentId         String
-  shipment           Shipment @relation(fields: [shipmentId], references: [id])
-  chargeType         String
-  oldCostMinor       Int
-  newCostMinor       Int
-  extraChargeMinor   Int
-  isCharged          Boolean
-  voided             Boolean  @default(false)
-  customerPaid       Boolean  @default(false)
-  raw                Json
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id               String   @id @default(cuid())
+  terminalId       String   @unique
+  shipmentId       String
+  shipment         Shipment @relation(fields: [shipmentId], references: [id])
+  chargeType       String
+  oldCostMinor     Int
+  newCostMinor     Int
+  extraChargeMinor Int
+  isCharged        Boolean
+  voided           Boolean  @default(false)
+  customerPaid     Boolean  @default(false)
+  raw              Json
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model Claim {
@@ -249,6 +286,8 @@ model Package {
   widthCm       Float?
   heightCm      Float?
   photos        String[]
+  notes         String?
+  procurementId String?
   shipmentId    String?
   shipment      Shipment? @relation(fields: [shipmentId], references: [id])
   receivedAt    DateTime?
@@ -256,15 +295,16 @@ model Package {
 }
 
 model ProcurementRequest {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  warehouse String
-  items     Json // [{ url, variant, quantity, notes }]
-  status    String // REQUESTED | QUOTED | PAID | PURCHASED | CANCELLED
-  quote     Json?
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  warehouse      String
+  items          Json // [{ url, variant, quantity, notes }]
+  status         String // REQUESTED | QUOTED | PAID | PURCHASED | CANCELLED
+  quote          Json?
   quoteExpiresAt DateTime?
   storeOrderRef  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  paidAt         DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }

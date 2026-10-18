@@ -16,12 +16,16 @@ export function ShipmentActions({
   canClaim,
   canRefresh,
   adjustmentDue,
+  canShipAgain,
+  unpaid = false,
 }: {
   id: string;
   canCancel: boolean;
   canClaim: boolean;
   canRefresh: boolean;
   adjustmentDue: string | null;
+  canShipAgain: boolean;
+  unpaid?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -42,7 +46,7 @@ export function ShipmentActions({
     }
   }
 
-  if (!canCancel && !canClaim && !canRefresh && !adjustmentDue) return null;
+  if (!canCancel && !canClaim && !canRefresh && !adjustmentDue && !canShipAgain) return null;
 
   return (
     <div className="card space-y-3">
@@ -67,6 +71,20 @@ export function ShipmentActions({
       )}
 
       <div className="flex flex-wrap gap-2">
+        {canShipAgain && (
+          <button
+            className="btn-primary"
+            disabled={Boolean(busy)}
+            onClick={() =>
+              run("again", async () => {
+                const { id: next } = await post(`/api/parcel/${id}/again`);
+                router.push(`/app/ship/parcel?q=${next}`);
+              })
+            }
+          >
+            {busy === "again" ? "Getting fresh prices…" : "Ship again"}
+          </button>
+        )}
         {canRefresh && (
           <button className="btn-ghost" disabled={Boolean(busy)} onClick={() => run("refresh", () => post(`/api/parcel/${id}/track`))}>
             {busy === "refresh" ? "Checking…" : "Refresh tracking"}
@@ -81,9 +99,9 @@ export function ShipmentActions({
           <button
             className="btn-danger"
             disabled={Boolean(busy)}
-            onClick={() => confirm("Cancel this shipment? You'll get a full refund.") && run("cancel", () => post(`/api/parcel/${id}/cancel`))}
+            onClick={() => confirm(unpaid ? "Cancel this shipment?" : "Cancel this shipment? You'll get a full refund.") && run("cancel", () => post(`/api/parcel/${id}/cancel`))}
           >
-            {busy === "cancel" ? "Cancelling…" : "Cancel and refund"}
+            {busy === "cancel" ? "Cancelling…" : unpaid ? "Cancel" : "Cancel and refund"}
           </button>
         )}
       </div>

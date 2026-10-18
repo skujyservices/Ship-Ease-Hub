@@ -1,17 +1,18 @@
 import "server-only";
 import webpush from "web-push";
 import { db } from "./db";
+import { brandedEmail } from "./email";
 
 /**
  * Sends one message on every channel the user can receive: email, WhatsApp and push.
  * A channel without credentials is skipped, and one failing channel never blocks the others.
  */
 
-type Message = { title: string; body: string; url?: string };
+type Message = { title: string; body: string; url?: string; cta?: string; lines?: [string, string][] };
 
-async function sendEmail(to: string, msg: Message) {
+/** Branded email to any address (also used for staff invites, before an account is active). */
+export async function sendEmail(to: string, msg: Message) {
   if (!process.env.RESEND_API_KEY) return;
-  const link = msg.url ? `<p><a href="${process.env.APP_URL}${msg.url}">View in Ship Ease Hub</a></p>` : "";
   await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
@@ -19,7 +20,8 @@ async function sendEmail(to: string, msg: Message) {
       from: process.env.EMAIL_FROM,
       to,
       subject: msg.title,
-      html: `<p>${msg.body}</p>${link}`,
+      html: brandedEmail(msg),
+      text: `${msg.title}\n\n${msg.body}${msg.url ? `\n\n${process.env.APP_URL}${msg.url}` : ""}`,
     }),
   });
 }

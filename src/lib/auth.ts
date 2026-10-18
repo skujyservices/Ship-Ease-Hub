@@ -52,8 +52,8 @@ export async function getCurrentUser() {
   if (!session) return null;
   return db.user.findUnique({
     where: { id: session.uid },
-    select: { id: true, name: true, email: true, phone: true, role: true, suiteId: true, businessName: true },
-  });
+    select: { id: true, name: true, email: true, phone: true, role: true, suiteId: true, businessName: true, ninVerifiedAt: true, ninName: true, disabledAt: true },
+  }).then((u) => (u && !u.disabledAt ? u : null));
 }
 
 export type CurrentUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
@@ -67,6 +67,13 @@ export async function requireUser(next?: string): Promise<CurrentUser> {
 export async function requireStaff(): Promise<CurrentUser> {
   const user = await requireUser("/admin");
   if (user.role === "CUSTOMER") redirect("/app");
+  return user;
+}
+
+/** Settings, carriers, webhooks and team are for admins only. */
+export async function requireAdmin(): Promise<CurrentUser> {
+  const user = await requireStaff();
+  if (user.role !== "ADMIN") redirect("/admin");
   return user;
 }
 

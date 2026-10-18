@@ -39,6 +39,9 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: stri
           required
         />
       </div>
+      {mode === "login" && (
+        <p className="-mt-2 text-right text-xs"><Link href="/forgot" className="font-semibold text-purple">Forgot password?</Link></p>
+      )}
       {state?.error && <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{state.error}</p>}
       <button className="btn-primary w-full" disabled={pending}>
         {pending ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}

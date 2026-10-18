@@ -12,8 +12,9 @@ import { STATUS } from "@/lib/status";
 
 export type ActionResult = { ok?: string; error?: string } | undefined;
 
-async function attempt(fn: () => Promise<string>, path: string): Promise<ActionResult> {
-  await requireStaff();
+async function attempt(fn: () => Promise<string>, path: string, adminOnly = false): Promise<ActionResult> {
+  const user = await requireStaff();
+  if (adminOnly && user.role !== "ADMIN") return { error: "Only admins can do this." };
   try {
     const ok = await fn();
     revalidatePath(path);
@@ -63,7 +64,7 @@ export async function toggleCarrier(carrierId: string, scope: "domestic" | "regi
   return attempt(async () => {
     await (enable ? terminal.enableCarrier : terminal.disableCarrier)(carrierId, { [scope]: true });
     return `${enable ? "Enabled" : "Disabled"} for ${scope}`;
-  }, "/admin/carriers");
+  }, "/admin/carriers", true);
 }
 
 // ---- Webhooks ----
@@ -76,21 +77,21 @@ export async function registerWebhook(): Promise<ActionResult> {
     if (webhooks.some((w) => w.url === url && w.live === live)) return "Already registered";
     await terminal.createWebhook({ name: "Ship Ease Hub", url, events: terminal.ALL_WEBHOOK_EVENTS, live, active: true });
     return `Registered ${url}`;
-  }, "/admin/webhooks");
+  }, "/admin/webhooks", true);
 }
 
 export async function setWebhookActive(webhookId: string, active: boolean): Promise<ActionResult> {
   return attempt(async () => {
     await (active ? terminal.enableWebhook : terminal.disableWebhook)(webhookId);
     return active ? "Enabled" : "Disabled";
-  }, "/admin/webhooks");
+  }, "/admin/webhooks", true);
 }
 
 export async function removeWebhook(webhookId: string): Promise<ActionResult> {
   return attempt(async () => {
     await terminal.deleteWebhook(webhookId);
     return "Deleted";
-  }, "/admin/webhooks");
+  }, "/admin/webhooks", true);
 }
 
 export async function retryInboxEvent(id: string): Promise<ActionResult> {
@@ -107,7 +108,16 @@ export async function updateSettings(_: ActionResult, form: FormData): Promise<A
   return attempt(async () => {
     const n = (k: string) => Number(form.get(k));
     const naira = (k: string) => Math.round(n(k) * 100);
+    const wh = (c: string) => ({
+      line1: String(form.get(`${c}_line1`) ?? ""),
+      line2: String(form.get(`${c}_line2`) ?? ""),
+      city: String(form.get(`${c}_city`) ?? ""),
+      state: String(form.get(`${c}_state`) ?? ""),
+      zip: String(form.get(`${c}_zip`) ?? ""),
+      phone: String(form.get(`${c}_phone`) ?? ""),
+    });
     const value = settingsSchema.parse({
+      warehouses: { US: wh("US"), GB: wh("GB"), CN: wh("CN") },
       outboundMarkupPercent: n("outboundMarkupPercent"),
       outboundMarkupFixedMinor: naira("outboundMarkupFixed"),
       dutyOnRateList: form.get("dutyOnRateList") === "on",
@@ -127,5 +137,5 @@ export async function updateSettings(_: ActionResult, form: FormData): Promise<A
     });
     await saveSettings(value);
     return "Settings saved";
-  }, "/admin/settings");
+  }, "/admin/settings", true);
 }

@@ -7,8 +7,8 @@ import { ServiceWorker } from "@/components/ServiceWorker";
 export default async function AppLayout({ children }: LayoutProps<"/app">) {
   const user = await requireUser("/app");
   return (
-    <div className="bg-grid flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-30 border-b border-silver/50 bg-white/90 backdrop-blur">
+    <div className="bg-grid flex min-h-dvh flex-col print:bg-white">
+      <header className="sticky top-0 z-30 border-b border-silver/50 bg-white/90 backdrop-blur print:hidden">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
           <Logo href="/app/shipments" />
           <div className="flex items-center gap-3">
@@ -19,7 +19,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
           </div>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-28 pt-6 sm:pb-10">{children}</main>
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-28 pt-6 sm:pb-10 print:p-0">{children}</main>
       <ServiceWorker />
     </div>
   );

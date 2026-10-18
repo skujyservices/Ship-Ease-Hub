@@ -5,8 +5,10 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { createSession, destroySession, newSuiteId } from "@/lib/auth";
+import { consumeToken, createToken, findToken } from "@/lib/tokens";
+import { sendEmail } from "@/lib/notify";
 
-export type AuthState = { error?: string } | undefined;
+export type AuthState = { error?: string; ok?: string } | undefined;
 
 const safeNext = (next: FormDataEntryValue | null) => {
   const n = typeof next === "string" ? next : "";
@@ -48,6 +50,7 @@ export async function login(_: AuthState, form: FormData): Promise<AuthState> {
   const password = String(form.get("password") ?? "");
   const user = await db.user.findUnique({ where: { email } });
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) return { error: "Email or password is incorrect." };
+  if (user.disabledAt) return { error: "This account has been deactivated. Please contact us." };
   await createSession(user);
   redirect(safeNext(form.get("next")) === "/app" && user.role !== "CUSTOMER" ? "/admin" : safeNext(form.get("next")));
 }
@@ -55,4 +58,30 @@ export async function login(_: AuthState, form: FormData): Promise<AuthState> {
 export async function logout() {
   await destroySession();
   redirect("/");
+}
+
+export async function requestReset(_: AuthState, form: FormData): Promise<AuthState> {
+  const email = String(form.get("email") ?? "").trim().toLowerCase();
+  const user = await db.user.findUnique({ where: { email } });
+  if (user && !user.disabledAt) {
+    const token = await createToken(user.id, "reset", 1);
+    await sendEmail(user.email, {
+      title: "Reset your Ship Ease Hub password",
+      body: "Tap the button below to choose a new password. The link works for 1 hour. If you didn't ask for this, you can ignore this email.",
+      url: `/reset/${token}`,
+      cta: "Choose a new password",
+    });
+  }
+  // Same answer either way, so the form can't be used to find out who has an account
+  return { ok: "If that email has an account, we've sent a reset link. Check your inbox." };
+}
+
+export async function setPassword(token: string, _: AuthState, form: FormData): Promise<AuthState> {
+  const password = String(form.get("password") ?? "");
+  if (password.length < 8) return { error: "Password must be at least 8 characters" };
+  const row = await findToken(token);
+  if (!row || !(await consumeToken(row.id))) return { error: "This link has expired or was already used. Ask for a new one." };
+  const user = await db.user.update({ where: { id: row.userId }, data: { passwordHash: await bcrypt.hash(password, 12) } });
+  await createSession(user);
+  redirect(user.role === "CUSTOMER" ? "/app" : "/admin");
 }

@@ -61,7 +61,7 @@ async function carrierSlug(rate: Rate): Promise<string | undefined> {
 // ---------------------------------------------------------------------------
 // 1. Quote: addresses → parcels → draft shipment → rates → duties → insurance
 // ---------------------------------------------------------------------------
-export async function createQuote(input: QuoteInput, userId: string | null) {
+export async function createQuote(input: QuoteInput, userId: string | null, batchId?: string) {
   const settings = await getSettings();
   const international = input.to.country !== "NG";
   const currency = "NGN" as const;
@@ -156,6 +156,7 @@ export async function createQuote(input: QuoteInput, userId: string | null) {
       code: newTrackingCode(),
       kind: "OUTBOUND",
       userId,
+      batchId,
       status: STATUS.DRAFT,
       fromAddress: input.from,
       toAddress: input.to,

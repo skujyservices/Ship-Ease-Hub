@@ -35,6 +35,16 @@ Sign up with the email you set as `ADMIN_EMAIL` to get the admin panel at `/admi
 8. **Push:** `npx web-push generate-vapid-keys` and put the keys in the `VAPID` variables.
 9. Set your markup and fees in Admin → Settings.
 10. Have a lawyer review `/terms`.
+11. **Shop & Ship:** fill in the USA / UK / China warehouse addresses and per-kg rates in Admin → Settings.
+12. **Daily storage job:** set `CRON_SECRET`. On Vercel, `vercel.json` already runs `/api/cron/storage` every morning. Elsewhere, call it daily with `Authorization: Bearer $CRON_SECRET`.
+
+## Features at a glance
+
+- **Send a parcel** (Terminal Africa): guest quotes, duties included, insurance, customs documents, pickup/drop-off, tracking, cancel and refund, claims, weight adjustments, **Ship again**.
+- **Send many parcels:** upload a CSV (template at `/templates/bulk-shipments.csv`), auto-pick the cheapest or fastest carrier per row, pay once.
+- **Shop & Ship:** USA/UK/China addresses with the customer's suite ID, pre-alerts, staff package intake, combined boxes, pay in ₦/£/$, dispatch, Lagos arrival, pickup code (QR), storage fees (2 free days, then ₦10,000/day, disposed after day 7) with reminders.
+- **Buy for me:** product-link requests, staff quotes (items + store delivery + 5% fee, held 48h), payment, purchase, then it flows into Shop & Ship.
+- **Accounts:** branded emails, receipts (download as PDF), password reset, NIN identity check, team invites with Staff/Admin roles, insights for customers and the business.
 
 ## Brand
 
