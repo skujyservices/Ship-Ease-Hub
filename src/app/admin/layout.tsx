@@ -4,13 +4,18 @@ import { requireStaff } from "@/lib/auth";
 
 const NAV = [
   ["/admin", "Overview"],
+  ["/admin/insights", "Insights"],
   ["/admin/shipments", "Shipments"],
+  ["/admin/inbound", "Shop & Ship"],
+  ["/admin/procurement", "Buy for me"],
+  ["/admin/customers", "Customers"],
   ["/admin/carriers", "Carriers"],
   ["/admin/rate-cards", "Rate cards"],
   ["/admin/reconciliations", "Weight checks"],
   ["/admin/claims", "Claims"],
   ["/admin/transactions", "Terminal wallet"],
   ["/admin/webhooks", "Webhooks"],
+  ["/admin/team", "Team"],
   ["/admin/settings", "Settings"],
 ] as const;
 

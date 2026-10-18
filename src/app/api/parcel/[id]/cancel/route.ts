@@ -5,6 +5,7 @@ import { cancelOnTerminal } from "@/lib/outbound/service";
 import { refundPayment } from "@/lib/checkout";
 import { STATUS } from "@/lib/status";
 import { notifyUser } from "@/lib/notify";
+import { cancelInbound } from "@/lib/inbound/service";
 
 // Cancel before the courier collects it, then refund the customer in full
 export const POST = handle(async (_req: Request, ctx: RouteContext<"/api/parcel/[id]/cancel">) => {
@@ -12,9 +13,11 @@ export const POST = handle(async (_req: Request, ctx: RouteContext<"/api/parcel/
   const { shipment } = await shipmentForRequest(id, { requireUser: true });
 
   if ([STATUS.DRAFT, STATUS.AWAITING_PAYMENT].includes(shipment.status as never)) {
-    await db.shipment.update({ where: { id }, data: { status: STATUS.CANCELLED } });
+    if (shipment.kind === "INBOUND") await cancelInbound(shipment);
+    else await db.shipment.update({ where: { id }, data: { status: STATUS.CANCELLED } });
     return NextResponse.json({ ok: true });
   }
+  if (shipment.kind === "INBOUND") throw new HttpError(409, "Paid Shop & Ship orders can't be cancelled online. Please contact us.");
   if (![STATUS.BOOKED, STATUS.PICKUP_SCHEDULED, STATUS.BOOKING_FAILED].includes(shipment.status as never))
     throw new HttpError(409, "This shipment can no longer be cancelled because the courier already has it.");
 

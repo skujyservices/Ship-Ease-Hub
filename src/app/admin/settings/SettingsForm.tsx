@@ -21,6 +21,17 @@ export function SettingsForm({ s }: { s: Settings }) {
         </label>
       </Group>
 
+      <Group title="Shop & Ship: warehouse addresses" note="Shown to customers with their name and suite ID added. Leave a warehouse blank to show 'coming soon'.">
+        {(["US", "GB", "CN"] as const).map((c) => (
+          <div key={c} className="grid gap-2">
+            <p className="text-sm font-semibold text-navy">{c === "GB" ? "United Kingdom" : c === "CN" ? "China" : "USA"}</p>
+            {(["line1", "line2", "city", "state", "zip", "phone"] as const).map((f) => (
+              <input key={f} name={`${c}_${f}`} className="input" placeholder={{ line1: "Street address", line2: "Unit / building (optional)", city: "City", state: "State / province", zip: "Postcode / ZIP", phone: "Phone" }[f]} defaultValue={s.warehouses[c][f]} aria-label={`${c} ${f}`} />
+            ))}
+          </div>
+        ))}
+      </Group>
+
       <Group title="Shop & Ship: partner air rates (per kg, ₦)" note="What partners charge you, duties included. Customers pay this plus the inbound markup.">
         {(["US", "GB", "CN"] as const).map((c) => (
           <div key={c} className="grid gap-2">

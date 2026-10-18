@@ -1,15 +1,27 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { formatMoney } from "@/lib/money";
+import { customerInsights } from "@/lib/insights";
+import { PURPOSE_LABEL } from "@/lib/checkout";
 import { PushToggle } from "@/components/ServiceWorker";
+import { BarChart } from "@/components/BarChart";
 import { logout } from "@/app/(auth)/actions";
 import { deleteAddress } from "./actions";
+import { VerifyNin } from "./VerifyNin";
 
 export const metadata: Metadata = { title: "Account" };
 
+const short = (minor: number) => (minor >= 100_000_00 ? `₦${Math.round(minor / 100_000_00)}k` : formatMoney(minor));
+
 export default async function AccountPage() {
   const user = await requireUser("/app/account");
-  const addresses = await db.savedAddress.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" } });
+  const [addresses, insights, payments] = await Promise.all([
+    db.savedAddress.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" } }),
+    customerInsights(user.id),
+    db.payment.findMany({ where: { userId: user.id, status: { in: ["SUCCESS", "REFUNDED"] } }, orderBy: { createdAt: "desc" }, take: 10 }),
+  ]);
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -17,11 +29,70 @@ export default async function AccountPage() {
 
       <section className="card">
         <p className="label">Profile</p>
-        <p className="text-lg font-semibold text-navy">{user.name}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-lg font-semibold text-navy">{user.name}</p>
+          {user.ninVerifiedAt && <span className="chip bg-success/10 text-success">✓ Identity verified</span>}
+        </div>
         <p className="text-sm text-navy/70">{user.email} · {user.phone}</p>
         <p className="mt-3 text-sm text-navy/70">
-          Your suite ID: <span className="font-mono font-semibold text-purple">{user.suiteId}</span>
+          Your suite ID: <span className="font-mono font-semibold text-purple">{user.suiteId}</span> ·{" "}
+          <Link href="/app/ship/abroad" className="font-semibold text-purple">My USA, UK &amp; China addresses</Link>
         </p>
+        {!user.ninVerifiedAt && (
+          <div className="mt-4 border-t border-silver/60 pt-4">
+            <VerifyNin defaultName={user.name} />
+          </div>
+        )}
+      </section>
+
+      <section className="card space-y-4">
+        <p className="label">Your shipping</p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            ["This month", formatMoney(insights.thisMonthMinor)],
+            ["Parcels sent", String(insights.sent)],
+            ["From abroad", String(insights.received)],
+            ["Delivered", String(insights.delivered)],
+          ].map(([k, v]) => (
+            <div key={k} className="rounded-2xl bg-mist p-3">
+              <p className="text-xs text-navy/60">{k}</p>
+              <p className="font-display text-xl font-medium text-navy">{v}</p>
+            </div>
+          ))}
+        </div>
+        <div>
+          <p className="mb-3 text-sm font-medium text-navy">Spend per month</p>
+          <BarChart data={insights.months} format={short} label="Spend per month, last 6 months" height={120} />
+        </div>
+        {insights.topDestinations.length > 0 && (
+          <p className="text-sm text-navy/70">
+            Top destinations: {insights.topDestinations.map(([c, n]) => `${c} (${n})`).join(" · ")}
+          </p>
+        )}
+      </section>
+
+      <section className="card">
+        <p className="label">Payments &amp; receipts</p>
+        {payments.length === 0 ? (
+          <p className="text-sm text-navy/60">No payments yet.</p>
+        ) : (
+          <ul className="divide-y divide-silver/60">
+            {payments.map((p) => (
+              <li key={p.id}>
+                <Link href={`/app/receipts/${p.id}`} className="flex items-center justify-between gap-3 py-3 text-sm hover:text-purple">
+                  <span>
+                    <span className="font-semibold text-navy">{PURPOSE_LABEL[p.purpose]}</span>
+                    <span className="block text-navy/60">{(p.paidAt ?? p.createdAt).toLocaleDateString("en-GB")} · {p.reference}</span>
+                  </span>
+                  <span className="text-right font-medium text-navy">
+                    {formatMoney(p.amountMinor, p.currency)}
+                    {p.status === "REFUNDED" && <span className="block text-xs text-danger">Refunded</span>}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="card" id="addresses">

@@ -2,8 +2,22 @@ import "server-only";
 import { z } from "zod";
 import { db } from "./db";
 
+const warehouseSchema = z.object({
+  line1: z.string(),
+  line2: z.string(),
+  city: z.string(),
+  state: z.string(),
+  zip: z.string(),
+  phone: z.string(),
+});
+export type Warehouse = z.infer<typeof warehouseSchema>;
+export const WAREHOUSES = { US: "USA", GB: "United Kingdom", CN: "China" } as const;
+export type WarehouseCode = keyof typeof WAREHOUSES;
+
 /** Business settings, editable in Admin → Settings. Money in minor units. */
 export const settingsSchema = z.object({
+  // Partner warehouse addresses shown to Shop & Ship customers (suite ID is added per customer)
+  warehouses: z.object({ US: warehouseSchema, GB: warehouseSchema, CN: warehouseSchema }),
   // Outbound (Terminal): customer price = Terminal total × (1 + %) + fixed
   outboundMarkupPercent: z.number().min(0).max(100),
   outboundMarkupFixedMinor: z.number().int().min(0),
@@ -27,7 +41,10 @@ export const settingsSchema = z.object({
 
 export type Settings = z.infer<typeof settingsSchema>;
 
+const blankWarehouse: Warehouse = { line1: "", line2: "", city: "", state: "", zip: "", phone: "" };
+
 export const DEFAULT_SETTINGS: Settings = {
+  warehouses: { US: blankWarehouse, GB: blankWarehouse, CN: blankWarehouse },
   outboundMarkupPercent: 10,
   outboundMarkupFixedMinor: 0,
   dutyOnRateList: true,

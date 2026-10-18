@@ -16,6 +16,7 @@ export const STATUS = {
   CANCELLED: "CANCELLED",
   // Inbound (partners)
   AT_WAREHOUSE: "AT_WAREHOUSE",
+  AWAITING_DISPATCH: "AWAITING_DISPATCH",
   SHIPPED: "SHIPPED",
   ARRIVED_NIGERIA: "ARRIVED_NIGERIA",
   READY_FOR_PICKUP: "READY_FOR_PICKUP",
@@ -39,6 +40,7 @@ const META: Record<Status, { label: string; phase: 1 | 2 | 3; tone: "neutral" | 
   RETURNED: { label: "Returned to sender", phase: 3, tone: "bad" },
   CANCELLED: { label: "Cancelled", phase: 1, tone: "neutral" },
   AT_WAREHOUSE: { label: "At warehouse", phase: 1, tone: "info" },
+  AWAITING_DISPATCH: { label: "Paid · packing", phase: 1, tone: "info" },
   SHIPPED: { label: "Shipped", phase: 2, tone: "info" },
   ARRIVED_NIGERIA: { label: "Arrived Nigeria", phase: 2, tone: "info" },
   READY_FOR_PICKUP: { label: "Ready for pickup", phase: 3, tone: "warn" },
@@ -77,7 +79,7 @@ export function fromTerminalStatus(s: string | undefined): Status | null {
 /** Shipments list tabs (spec §2). */
 export function listTab(s: string): "action" | "warehouse" | "onway" | "done" {
   if ([STATUS.AWAITING_PAYMENT, STATUS.BOOKING_FAILED, STATUS.READY_FOR_PICKUP, STATUS.DRAFT].includes(s as never)) return "action";
-  if (s === STATUS.AT_WAREHOUSE) return "warehouse";
+  if (s === STATUS.AT_WAREHOUSE || s === STATUS.AWAITING_DISPATCH) return "warehouse";
   if (statusMeta(s).phase === 3 || s === STATUS.CANCELLED) return "done";
   return "onway";
 }

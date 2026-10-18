@@ -35,7 +35,7 @@ export function TabBar() {
       </nav>
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-silver/70 bg-white pb-[env(safe-area-inset-bottom)] sm:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 print:hidden border-t border-silver/70 bg-white pb-[env(safe-area-inset-bottom)] sm:hidden"
         aria-label="Main"
       >
         {TABS.map((t) =>

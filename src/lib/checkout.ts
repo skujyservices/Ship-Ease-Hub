@@ -3,6 +3,11 @@ import type { Payment, PaymentPurpose } from "@prisma/client";
 import { db } from "./db";
 import { newReference, paystackInitialize, paystackRefund, paystackVerify, stripeCheckout, stripeRefund, stripeVerify } from "./payments";
 import { bookPaidShipment } from "./outbound/service";
+import { markInboundPaid } from "./inbound/service";
+import { markProcurementPaid } from "./inbound/procurement";
+import { sendEmail } from "./notify";
+import { formatMoney } from "./money";
+import { STATUS } from "./status";
 
 const appUrl = () => process.env.APP_URL ?? "http://localhost:3000";
 
@@ -16,6 +21,8 @@ export async function startCheckout(input: {
   description: string;
   shipmentId?: string;
   procurementId?: string;
+  batchId?: string;
+  shipmentIds?: string[]; // batch payments: exactly what this payment covers
   returnPath: string;
 }) {
   const reference = newReference("SEH");
@@ -29,7 +36,7 @@ export async function startCheckout(input: {
           email: input.email,
           amountMinor: input.amountMinor,
           callbackUrl: callback,
-          metadata: { purpose: input.purpose, shipmentId: input.shipmentId },
+          metadata: { purpose: input.purpose, shipmentId: input.shipmentId, batchId: input.batchId },
         })
       : await stripeCheckout({
           reference,
@@ -51,7 +58,8 @@ export async function startCheckout(input: {
       userId: input.userId,
       shipmentId: input.shipmentId,
       procurementId: input.procurementId,
-      raw: started.providerRef ? { sessionId: started.providerRef } : undefined,
+      batchId: input.batchId,
+      raw: { ...(started.providerRef ? { sessionId: started.providerRef } : {}), ...(input.shipmentIds ? { shipmentIds: input.shipmentIds } : {}) },
     },
   });
   return started.redirectUrl;
@@ -87,17 +95,55 @@ export async function confirmPayment(reference: string): Promise<Payment | null>
   return fresh;
 }
 
+/** Runs what a successful payment bought, exactly once (claimed atomically via fulfilledAt). */
 async function fulfil(payment: Payment) {
+  const claimed = await db.payment.updateMany({ where: { id: payment.id, fulfilledAt: null }, data: { fulfilledAt: new Date() } });
+  if (claimed.count === 0) return;
+
   switch (payment.purpose) {
     case "SHIPMENT":
-      if (payment.shipmentId) await bookPaidShipment(payment.shipmentId);
+      if (payment.batchId) {
+        const covered = (payment.raw as { shipmentIds?: string[] } | null)?.shipmentIds ?? [];
+        const items = await db.shipment.findMany({ where: { batchId: payment.batchId, id: { in: covered }, status: STATUS.AWAITING_PAYMENT } });
+        for (const s of items) await bookPaidShipment(s.id);
+      } else if (payment.shipmentId) {
+        const s = await db.shipment.findUniqueOrThrow({ where: { id: payment.shipmentId } });
+        if (s.kind === "INBOUND") await markInboundPaid(s.id);
+        else await bookPaidShipment(s.id);
+      }
       break;
     case "WEIGHT_ADJUSTMENT":
       await db.reconciliation.updateMany({ where: { shipmentId: payment.shipmentId! }, data: { customerPaid: true } });
       break;
-    // STORAGE_FEE and PROCUREMENT are fulfilled by the inbound flows
+    case "STORAGE_FEE":
+      await db.shipment.update({ where: { id: payment.shipmentId! }, data: { storageFeePaidMinor: { increment: payment.amountMinor } } });
+      break;
+    case "PROCUREMENT":
+      if (payment.procurementId) await markProcurementPaid(payment.procurementId);
+      break;
   }
+
+  const user = await db.user.findUnique({ where: { id: payment.userId }, select: { email: true } });
+  if (user)
+    await sendEmail(user.email, {
+      title: `Receipt ${payment.reference}`,
+      body: "Thank you. Your payment was successful.",
+      lines: [
+        ["Amount", formatMoney(payment.amountMinor, payment.currency)],
+        ["For", PURPOSE_LABEL[payment.purpose]],
+        ["Reference", payment.reference],
+      ],
+      url: `/app/receipts/${payment.id}`,
+      cta: "View receipt",
+    }).catch((e) => console.error("receipt email failed", e));
 }
+
+export const PURPOSE_LABEL: Record<PaymentPurpose, string> = {
+  SHIPMENT: "Shipping",
+  STORAGE_FEE: "Storage fee",
+  PROCUREMENT: "Buy for me order",
+  WEIGHT_ADJUSTMENT: "Weight adjustment",
+};
 
 export async function refundPayment(payment: Payment) {
   if (payment.status !== "SUCCESS") return;

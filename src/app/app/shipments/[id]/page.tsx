@@ -10,6 +10,10 @@ import { markup, type PriceLine } from "@/lib/outbound/pricing";
 import { PhaseBars, StatusChip } from "@/components/Status";
 import { EventList } from "@/components/EventList";
 import { ShipmentActions } from "./ShipmentActions";
+import { InboundPay, PayStorageFee } from "./InboundActions";
+import QRCode from "qrcode";
+import { storageState } from "@/lib/inbound/service";
+import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = { title: "Shipment" };
 
@@ -26,6 +30,8 @@ export default async function ShipmentPage({ params, searchParams }: PageProps<"
       events: { orderBy: { occurredAt: "desc" } },
       reconciliations: { where: { voided: false, customerPaid: false, extraChargeMinor: { gt: 0 } } },
       claims: true,
+      packages: { orderBy: { createdAt: "asc" } },
+      payments: { where: { status: { in: ["SUCCESS", "REFUNDED"] } }, orderBy: { createdAt: "asc" } },
     },
   });
   if (!s || (s.userId !== user.id && user.role === "CUSTOMER")) notFound();
@@ -36,6 +42,10 @@ export default async function ShipmentPage({ params, searchParams }: PageProps<"
   const docs = (s.regulatoryDocs as { purchased?: { name: string; document_url?: string }[] } | null)?.purchased ?? [];
   const settings = await getSettings();
   const adjustment = s.reconciliations[0];
+  const inbound = s.kind === "INBOUND";
+  const storage = storageState(s, settings);
+  const qr = s.status === STATUS.READY_FOR_PICKUP && s.pickupCode ? await QRCode.toDataURL(s.pickupCode, { margin: 1, width: 220, color: { dark: "#00002E" } }) : null;
+  const rules = `I'll collect from ${BRAND.lagosPickup}. It's free for ${settings.storageFreeDays} days after I'm notified, then ${formatMoney(settings.storageFeePerDayMinor)}/day, and items not collected after day ${settings.storageMaxDays} are disposed of.`;
 
   const links = [
     { href: s.labelUrl, label: "Shipping label" },
@@ -48,7 +58,7 @@ export default async function ShipmentPage({ params, searchParams }: PageProps<"
     <div className="mx-auto max-w-2xl space-y-4">
       <Link href="/app/shipments" className="text-sm font-semibold text-purple">← Shipments</Link>
 
-      {payment === "paid" && <Banner tone="good">Payment received. We&apos;re booking your shipment now.</Banner>}
+      {payment === "paid" && <Banner tone="good">{inbound ? "Payment received. Thank you!" : "Payment received. We're booking your shipment now."}</Banner>}
       {payment === "failed" && <Banner tone="bad">Your payment didn&apos;t go through. You weren&apos;t charged.</Banner>}
       {payment === "pending" && <Banner tone="warn">We&apos;re still confirming your payment. This page will update shortly.</Banner>}
 
@@ -64,8 +74,11 @@ export default async function ShipmentPage({ params, searchParams }: PageProps<"
         </div>
         <PhaseBars status={s.status} />
 
-        {s.status === STATUS.AWAITING_PAYMENT && (
+        {s.status === STATUS.AWAITING_PAYMENT && !inbound && (
           <Link href={`/app/ship/parcel?q=${s.id}`} className="btn-primary w-full">Complete payment</Link>
+        )}
+        {s.status === STATUS.AWAITING_PAYMENT && inbound && s.totalMinor && (
+          <InboundPay id={s.id} totalMinor={s.totalMinor} fx={{ GBP: settings.fxToNgn.GBP, USD: settings.fxToNgn.USD }} rules={rules} />
         )}
         {s.status === STATUS.DRAFT && (
           <Link href={`/app/ship/parcel?q=${s.id}`} className="btn-primary w-full">Choose a carrier</Link>
@@ -123,9 +136,44 @@ export default async function ShipmentPage({ params, searchParams }: PageProps<"
         )}
       </div>
 
+      {qr && (
+        <div className="card grid items-center gap-6 sm:grid-cols-[auto_1fr]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={qr} alt={`Pickup code ${s.pickupCode}`} className="mx-auto h-44 w-44 rounded-2xl" />
+          <div className="space-y-2">
+            <p className="label">Pickup code</p>
+            <p className="font-mono text-4xl font-semibold tracking-[0.2em] text-navy">{s.pickupCode}</p>
+            <p className="text-sm text-navy/70">Show this at {BRAND.lagosPickup}.</p>
+            <p className={`text-sm font-medium ${storage.outstandingMinor ? "text-danger" : "text-navy"}`}>
+              {storage.day <= settings.storageFreeDays
+                ? `Free storage: ${settings.storageFreeDays - storage.day + 1} day(s) left.`
+                : `Storage owed: ${formatMoney(storage.outstandingMinor)} · ${storage.daysLeft} day(s) left to collect.`}
+            </p>
+            {storage.outstandingMinor > 0 && <PayStorageFee id={s.id} label={`Pay ${formatMoney(storage.outstandingMinor)} now`} />}
+          </div>
+        </div>
+      )}
+
+      {inbound && s.packages.length > 0 && (
+        <div className="card">
+          <h2 className="mb-3 text-lg font-medium text-navy">Packages {s.consolidate && s.packages.length > 1 ? "(combined into one box)" : ""}</h2>
+          <ul className="divide-y divide-silver/60 text-sm">
+            {s.packages.map((p) => (
+              <li key={p.id} className="flex justify-between gap-3 py-2.5">
+                <span className="text-navy">{p.description}<span className="block text-xs text-navy/55">{p.store}{p.storeTracking ? ` · ${p.storeTracking}` : ""}</span></span>
+                <span className="shrink-0 text-navy/70">{p.weightKg ? `${p.weightKg} kg` : ""}</span>
+              </li>
+            ))}
+          </ul>
+          {s.chargeableKg && <p className="mt-2 text-xs text-navy/55">Billed weight {s.chargeableKg} kg (the larger of actual and volume weight).</p>}
+        </div>
+      )}
+
       <ShipmentActions
         id={s.id}
-        canCancel={[STATUS.BOOKED, STATUS.PICKUP_SCHEDULED, STATUS.AWAITING_PAYMENT, STATUS.DRAFT].includes(s.status as never)}
+        canCancel={inbound ? s.status === STATUS.AWAITING_PAYMENT : [STATUS.BOOKED, STATUS.PICKUP_SCHEDULED, STATUS.AWAITING_PAYMENT, STATUS.DRAFT].includes(s.status as never)}
+        unpaid={[STATUS.AWAITING_PAYMENT, STATUS.DRAFT].includes(s.status as never)}
+        canShipAgain={!inbound && Boolean(s.parcels) && s.status !== STATUS.DRAFT}
         canClaim={Boolean(s.insuranceId) && !s.claims.length && [STATUS.IN_TRANSIT, STATUS.DELIVERED, STATUS.RETURNED, STATUS.AWAITING_CLEARANCE].includes(s.status as never)}
         canRefresh={s.kind === "OUTBOUND" && [STATUS.BOOKED, STATUS.PICKUP_SCHEDULED, STATUS.IN_TRANSIT, STATUS.AWAITING_CLEARANCE].includes(s.status as never)}
         adjustmentDue={adjustment ? formatMoney(markup(adjustment.extraChargeMinor, { ...settings, outboundMarkupFixedMinor: 0 })) : null}
@@ -153,7 +201,18 @@ export default async function ShipmentPage({ params, searchParams }: PageProps<"
         </div>
       )}
 
-      {to && (
+      {s.payments.length > 0 && (
+        <div className="card flex flex-wrap items-center gap-2 text-sm">
+          <span className="mr-2 font-medium text-navy">Receipts</span>
+          {s.payments.map((p) => (
+            <Link key={p.id} href={`/app/receipts/${p.id}`} className="btn-ghost px-4 py-2">
+              {formatMoney(p.amountMinor, p.currency)}{p.status === "REFUNDED" ? " (refunded)" : ""}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {to && !inbound && (
         <div className="card grid gap-4 text-sm sm:grid-cols-2">
           {[["From", from], ["To", to]].map(([label, a]) => {
             const ad = a as Addr | null;
