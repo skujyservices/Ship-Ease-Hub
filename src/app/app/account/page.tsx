@@ -10,6 +10,7 @@ import { BarChart } from "@/components/BarChart";
 import { logout } from "@/app/(auth)/actions";
 import { deleteAddress } from "./actions";
 import { VerifyNin } from "./VerifyNin";
+import { ProfileForm, SecurityForms } from "./ProfileForms";
 
 export const metadata: Metadata = { title: "Account" };
 
@@ -28,13 +29,13 @@ export default async function AccountPage() {
       <h1 className="text-3xl font-light text-navy">Account</h1>
 
       <section className="card">
-        <p className="label">Profile</p>
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-lg font-semibold text-navy">{user.name}</p>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <p className="label mb-0">Profile</p>
           {user.ninVerifiedAt && <span className="chip bg-success/10 text-success">✓ Identity verified</span>}
+          {user.emailVerifiedAt && <span className="chip bg-mist text-navy">✓ Email confirmed</span>}
         </div>
-        <p className="text-sm text-navy/70">{user.email} · {user.phone}</p>
-        <p className="mt-3 text-sm text-navy/70">
+        <ProfileForm name={user.name} phone={user.phone ?? ""} businessName={user.businessName ?? ""} />
+        <p className="mt-4 border-t border-silver/60 pt-4 text-sm text-navy/70">
           Your suite ID: <span className="font-mono font-semibold text-purple">{user.suiteId}</span> ·{" "}
           <Link href="/app/ship/abroad" className="font-semibold text-purple">My USA, UK &amp; China addresses</Link>
         </p>
@@ -43,6 +44,11 @@ export default async function AccountPage() {
             <VerifyNin defaultName={user.name} />
           </div>
         )}
+      </section>
+
+      <section className="card">
+        <p className="label">Sign-in &amp; security</p>
+        <SecurityForms email={user.email} pendingEmail={user.pendingEmail} />
       </section>
 
       <section className="card space-y-4">

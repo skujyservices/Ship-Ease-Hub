@@ -70,6 +70,7 @@ export function SiteFooter() {
             <li><Link href="/quote" className="hover:text-white">Get a quote</Link></li>
             <li><Link href="/track" className="hover:text-white">Track a shipment</Link></li>
             <li><Link href="/terms" className="hover:text-white">Terms</Link></li>
+            <li><Link href="/privacy" className="hover:text-white">Privacy</Link></li>
             <li><a href={`https://instagram.com/${BRAND.instagram}`} className="hover:text-white" target="_blank" rel="noreferrer">@{BRAND.instagram}</a></li>
           </ul>
         </div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { requestReset, setPassword, type AuthState } from "./actions";
+import { confirmEmail, requestReset, setPassword, type AuthState } from "./actions";
 
 export function ForgotForm() {
   const [state, action, pending] = useActionState<AuthState, FormData>(requestReset, undefined);
@@ -29,6 +29,23 @@ export function NewPasswordForm({ token }: { token: string }) {
       </div>
       {state?.error && <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{state.error}</p>}
       <button className="btn-primary w-full" disabled={pending}>{pending ? "Saving…" : "Save and sign in"}</button>
+    </form>
+  );
+}
+
+export function ConfirmEmailForm({ token }: { token: string }) {
+  const [state, action, pending] = useActionState<AuthState, FormData>(() => confirmEmail(token), undefined);
+  if (state?.ok)
+    return (
+      <div className="space-y-4">
+        <p className="rounded-2xl bg-success/10 px-4 py-3 text-sm text-success">{state.ok}</p>
+        <Link href="/app" className="btn-primary w-full">Continue</Link>
+      </div>
+    );
+  return (
+    <form action={action} className="space-y-4">
+      {state?.error && <p className="rounded-2xl bg-danger/10 px-4 py-3 text-sm text-danger">{state.error}</p>}
+      <button className="btn-primary w-full" disabled={pending}>{pending ? "Confirming…" : "Confirm my email"}</button>
     </form>
   );
 }

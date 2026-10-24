@@ -8,6 +8,7 @@ import { markProcurementPaid } from "./inbound/procurement";
 import { sendEmail } from "./notify";
 import { formatMoney } from "./money";
 import { STATUS } from "./status";
+import { requireVerifiedEmail } from "./verify";
 
 const appUrl = () => process.env.APP_URL ?? "http://localhost:3000";
 
@@ -26,6 +27,7 @@ export async function startCheckout(input: {
   docTypes?: string[]; // DOCUMENTS payments: which documents to buy
   returnPath: string;
 }) {
+  await requireVerifiedEmail(input.userId); // receipts and refunds go to this address
   const reference = newReference("SEH");
   const callback = `${appUrl()}/api/payments/callback?reference=${reference}&next=${encodeURIComponent(input.returnPath)}`;
 

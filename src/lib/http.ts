@@ -4,6 +4,7 @@ import { ZodError } from "zod";
 import { TerminalError } from "./terminal/client";
 import { db } from "./db";
 import { getCurrentUser, type CurrentUser } from "./auth";
+import { reportError } from "./errors";
 
 export class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -19,15 +20,19 @@ export function handle<A extends unknown[]>(fn: (...args: A) => Promise<Response
     } catch (e) {
       if (e instanceof HttpError) return NextResponse.json({ error: e.message }, { status: e.status });
       if (e instanceof ZodError) return NextResponse.json({ error: e.issues[0]?.message ?? "Invalid input", issues: e.issues }, { status: 422 });
+      const req = args[0] instanceof Request ? args[0] : null;
+      const where = { path: req ? new URL(req.url).pathname : "unknown", routeType: "route" };
       if (e instanceof TerminalError) {
         console.error("Terminal error", e.path, e.status, e.message);
+        if (e.status >= 500 || e.status === 401) await reportError(e, where); // Terminal down or our key rejected
         // Missing/invalid API key is our problem, not the customer's: don't leak config details
         if (!e.path || e.status === 401)
           return NextResponse.json({ error: "Shipping prices are temporarily unavailable. Please try again shortly." }, { status: 503 });
         return NextResponse.json({ error: e.message }, { status: e.status >= 500 ? 502 : 400 });
       }
       console.error(e);
-      return NextResponse.json({ error: e instanceof Error ? e.message : "Something went wrong" }, { status: 500 });
+      await reportError(e, where);
+      return NextResponse.json({ error: "Something went wrong on our side. We've been alerted." }, { status: 500 });
     }
   };
 }
@@ -46,16 +51,20 @@ export async function shipmentForRequest(id: string, opts: { requireUser?: boole
   return { shipment, user: user as CurrentUser | null };
 }
 
-// Very small fixed-window limiter (per server instance) for endpoints that cost money upstream.
-const hits = new Map<string, { count: number; reset: number }>();
-export function rateLimit(key: string, limit: number, windowMs: number) {
-  const now = Date.now();
-  const entry = hits.get(key);
-  if (!entry || entry.reset < now) {
-    hits.set(key, { count: 1, reset: now + windowMs });
-    return;
-  }
-  if (++entry.count > limit) throw new HttpError(429, "Too many requests. Please wait a few minutes and try again.");
+/**
+ * Fixed-window rate limit stored in the database, so it holds across all serverless
+ * instances (an in-memory counter resets whenever Vercel starts a new one).
+ * One atomic upsert per call: a new window starts once the old one has expired.
+ */
+export async function rateLimit(key: string, limit: number, windowMs: number) {
+  const rows = await db.$queryRaw<{ count: number }[]>`
+    insert into "RateLimit" ("key", "count", "resetAt")
+    values (${key}, 1, now() + ${windowMs} * interval '1 millisecond')
+    on conflict ("key") do update set
+      "count"   = case when "RateLimit"."resetAt" < now() then 1 else "RateLimit"."count" + 1 end,
+      "resetAt" = case when "RateLimit"."resetAt" < now() then now() + ${windowMs} * interval '1 millisecond' else "RateLimit"."resetAt" end
+    returning "count"`;
+  if ((rows[0]?.count ?? 0) > limit) throw new HttpError(429, "Too many requests. Please wait a few minutes and try again.");
 }
 
 export const clientIp = (req: Request) => req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "local";

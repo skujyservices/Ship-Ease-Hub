@@ -32,9 +32,9 @@ export function HomeHero() {
       <div className="relative">
         <RouteMap />
 
-        {/* Floating cards (example data) */}
+        {/* Floating cards: illustrative, labelled "Example" */}
         <div className="animate-float absolute -left-4 top-8 hidden w-56 rounded-2xl bg-white p-4 shadow-[0_20px_50px_-20px_rgba(0,0,46,0.45)] sm:block lg:-left-10">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-navy/50">SEH-7K3M9QX</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-navy/50">Example shipment</p>
           <p className="mt-1 text-sm font-semibold">Lagos → London</p>
           <div className="mt-2.5 flex gap-1">
             <div className="bar-cut h-1.5 flex-1 bg-purple" />
@@ -45,7 +45,7 @@ export function HomeHero() {
         </div>
 
         <div className="absolute -bottom-14 right-6 hidden rounded-2xl bg-white px-4 py-3 shadow-[0_20px_50px_-20px_rgba(0,0,46,0.45)] sm:block" style={{ animation: "seh-float 7s ease-in-out infinite reverse" }}>
-          <p className="text-[11px] text-navy/50">Lagos → London · 2.5 kg</p>
+          <p className="text-[11px] text-navy/50">Example · Lagos → London · 2.5 kg</p>
           <p className="font-display text-xl font-medium">
             ₦84,500 <span className="text-xs font-normal text-success">duties included</span>
           </p>

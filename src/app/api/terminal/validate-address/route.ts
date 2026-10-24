@@ -5,7 +5,7 @@ import { clientIp, handle, rateLimit } from "@/lib/http";
 
 // Global address validation (Terminal charges ~$0.02 per call), used on the destination address
 export const POST = handle(async (req: Request) => {
-  rateLimit(`validate:${clientIp(req)}`, 20, 3600_000);
+  await rateLimit(`validate:${clientIp(req)}`, 20, 3600_000);
   const a = addressSchema.parse(await req.json());
   try {
     const result = await validateAddress({ line1: a.line1, line2: a.line2, city: a.city, state: a.state, country: a.country, zip: a.zip });

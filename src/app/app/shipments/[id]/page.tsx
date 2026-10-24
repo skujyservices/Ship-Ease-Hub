@@ -15,6 +15,7 @@ import { DocumentsPanel } from "./DocumentsPanel";
 import QRCode from "qrcode";
 import { storageState } from "@/lib/inbound/service";
 import { BRAND } from "@/lib/brand";
+import { photoUrls } from "@/lib/storage";
 
 export const metadata: Metadata = { title: "Shipment" };
 
@@ -47,6 +48,7 @@ export default async function ShipmentPage({ params, searchParams }: PageProps<"
   const adjustment = s.reconciliations[0];
   const inbound = s.kind === "INBOUND";
   const storage = storageState(s, settings);
+  const pkgPhotos = inbound ? await Promise.all(s.packages.map((p) => photoUrls(p.photos))) : [];
   const qr = s.status === STATUS.READY_FOR_PICKUP && s.pickupCode ? await QRCode.toDataURL(s.pickupCode, { margin: 1, width: 220, color: { dark: "#00002E" } }) : null;
   const rules = `I'll collect from ${BRAND.lagosPickup}. It's free for ${settings.storageFreeDays} days after I'm notified, then ${formatMoney(settings.storageFeePerDayMinor)}/day, and items not collected after day ${settings.storageMaxDays} are disposed of.`;
 
@@ -166,10 +168,22 @@ export default async function ShipmentPage({ params, searchParams }: PageProps<"
         <div className="card">
           <h2 className="mb-3 text-lg font-medium text-navy">Packages {s.consolidate && s.packages.length > 1 ? "(combined into one box)" : ""}</h2>
           <ul className="divide-y divide-silver/60 text-sm">
-            {s.packages.map((p) => (
-              <li key={p.id} className="flex justify-between gap-3 py-2.5">
-                <span className="text-navy">{p.description}<span className="block text-xs text-navy/55">{p.store}{p.storeTracking ? ` · ${p.storeTracking}` : ""}</span></span>
-                <span className="shrink-0 text-navy/70">{p.weightKg ? `${p.weightKg} kg` : ""}</span>
+            {s.packages.map((p, i) => (
+              <li key={p.id} className="py-2.5">
+                <div className="flex justify-between gap-3">
+                  <span className="text-navy">{p.description}<span className="block text-xs text-navy/55">{p.store}{p.storeTracking ? ` · ${p.storeTracking}` : ""}</span></span>
+                  <span className="shrink-0 text-navy/70">{p.weightKg ? `${p.weightKg} kg` : ""}</span>
+                </div>
+                {pkgPhotos[i]?.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {pkgPhotos[i].map((src) => (
+                      <a key={src} href={src} target="_blank" rel="noreferrer">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={src} alt={`Photo of ${p.description}`} className="h-16 w-16 rounded-xl object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -182,7 +196,7 @@ export default async function ShipmentPage({ params, searchParams }: PageProps<"
         canCancel={inbound ? s.status === STATUS.AWAITING_PAYMENT : [STATUS.BOOKED, STATUS.PICKUP_SCHEDULED, STATUS.AWAITING_PAYMENT, STATUS.DRAFT].includes(s.status as never)}
         unpaid={[STATUS.AWAITING_PAYMENT, STATUS.DRAFT].includes(s.status as never)}
         canShipAgain={!inbound && Boolean(s.parcels) && s.status !== STATUS.DRAFT}
-        canClaim={Boolean(s.insuranceId) && !s.claims.length && [STATUS.IN_TRANSIT, STATUS.DELIVERED, STATUS.RETURNED, STATUS.AWAITING_CLEARANCE].includes(s.status as never)}
+        canClaim={(Boolean(s.insuranceId) || s.withInsurance) && !s.claims.length && [STATUS.IN_TRANSIT, STATUS.DELIVERED, STATUS.RETURNED, STATUS.AWAITING_CLEARANCE].includes(s.status as never)}
         canRefresh={s.kind === "OUTBOUND" && [STATUS.BOOKED, STATUS.PICKUP_SCHEDULED, STATUS.IN_TRANSIT, STATUS.AWAITING_CLEARANCE].includes(s.status as never)}
         adjustmentDue={adjustment ? formatMoney(markup(adjustment.extraChargeMinor, { ...settings, outboundMarkupFixedMinor: 0 })) : null}
       />

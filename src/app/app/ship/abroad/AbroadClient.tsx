@@ -101,6 +101,7 @@ export type PackageRow = {
   description: string;
   chargeableKg: number | null;
   receivedAt: string | null;
+  photo: string | null;
 };
 
 export function PackagePicker({ packages, perKg }: { packages: PackageRow[]; perKg: Record<Wh, number> }) {
@@ -135,9 +136,14 @@ export function PackagePicker({ packages, perKg }: { packages: PackageRow[]; per
           <li key={p.id}>
             <label className={`card flex items-center gap-4 ${p.status === "RECEIVED" ? "cursor-pointer" : "opacity-70"} ${selected.includes(p.id) ? "border-purple" : ""}`}>
               <input type="checkbox" disabled={p.status !== "RECEIVED"} checked={selected.includes(p.id)} onChange={() => toggle(p)} />
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-navy font-display text-xs font-semibold text-white">
-                {p.warehouse === "GB" ? "UK" : p.warehouse}
-              </span>
+              {p.photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.photo} alt="" className="h-10 w-10 shrink-0 rounded-xl object-cover" />
+              ) : (
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-navy font-display text-xs font-semibold text-white">
+                  {p.warehouse === "GB" ? "UK" : p.warehouse}
+                </span>
+              )}
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold text-navy">{p.description}</span>
                 <span className="text-xs text-navy/60">

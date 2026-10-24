@@ -11,7 +11,7 @@ import { quoteView } from "@/lib/outbound/view";
 // (some paid, e.g. duty estimates), so guests are rate-limited.
 export const POST = handle(async (req: Request) => {
   const user = await getCurrentUser();
-  rateLimit(`quote:${user?.id ?? clientIp(req)}`, user ? 60 : 10, 3600_000);
+  await rateLimit(`quote:${user?.id ?? clientIp(req)}`, user ? 60 : 10, 3600_000);
   const body = await req.json();
   const input = quoteSchema.parse(body);
   const shipment = await createQuote(input, user?.id ?? null).catch((e: Error) => {

@@ -9,6 +9,7 @@ import { WAREHOUSES, type WarehouseCode } from "@/lib/settings";
 import { collect, dispatchInbound, markReadyForPickup } from "@/lib/inbound/service";
 import { markPurchased, quoteInputSchema, quoteRequest } from "@/lib/inbound/procurement";
 import { tryRefund } from "@/lib/checkout";
+import { uploadPackagePhoto } from "@/lib/storage";
 import type { ActionResult } from "../actions";
 
 const fail = (e: unknown): ActionResult => ({ error: e instanceof z.ZodError ? e.issues[0].message : e instanceof Error ? e.message : String(e) });
@@ -49,6 +50,10 @@ export async function logPackage(_: ActionResult, form: FormData): Promise<Actio
     });
     const user = await db.user.findUnique({ where: { suiteId: input.suiteId } });
     if (!user) throw new Error(`No customer with suite ID ${input.suiteId}`);
+
+    const files = form.getAll("photoFiles").filter((f): f is File => f instanceof File && f.size > 0).slice(0, 6);
+    const uploaded = await Promise.all(files.map(uploadPackagePhoto));
+    input.photos = [...uploaded, ...input.photos];
 
     const data = {
       warehouse: input.warehouse,

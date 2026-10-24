@@ -8,7 +8,7 @@ export const POST = handle(async (_req: Request, ctx: RouteContext<"/api/parcel/
   const { id } = await ctx.params;
   const { shipment, user } = await shipmentForRequest(id, { requireUser: true });
   if (shipment.kind !== "OUTBOUND") throw new HttpError(400, "Only sent parcels can be repeated.");
-  rateLimit(`quote:${user!.id}`, 60, 3600_000);
+  await rateLimit(`quote:${user!.id}`, 60, 3600_000);
   const input = quoteSchema.parse({ from: shipment.fromAddress, to: shipment.toAddress, parcels: shipment.parcels, purpose: shipment.purpose ?? "personal" });
   const next = await createQuote(input, user!.id);
   return NextResponse.json({ id: next.id });

@@ -7,8 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:push": "node --env-file-if-exists=.env.local node_modules/prisma/build/index.js db push && node --env-file-if-exists=.env.local scripts/enable-rls.mjs",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "db:migration": "node --env-file-if-exists=.env.local scripts/new-migration.mjs",
+    "db:deploy": "node --env-file-if-exists=.env.local node_modules/prisma/build/index.js migrate deploy && node --env-file-if-exists=.env.local scripts/enable-rls.mjs",
+    "db:status": "node --env-file-if-exists=.env.local node_modules/prisma/build/index.js migrate status"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

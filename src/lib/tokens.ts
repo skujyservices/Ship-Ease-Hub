@@ -6,7 +6,7 @@ import { db } from "./db";
 
 const hash = (t: string) => crypto.createHash("sha256").update(t).digest("hex");
 
-export async function createToken(userId: string, purpose: "invite" | "reset", ttlHours: number) {
+export async function createToken(userId: string, purpose: "invite" | "reset" | "verify", ttlHours: number) {
   const token = crypto.randomBytes(32).toString("base64url");
   await db.passwordToken.create({ data: { userId, purpose, tokenHash: hash(token), expiresAt: new Date(Date.now() + ttlHours * 3600_000) } });
   return token;

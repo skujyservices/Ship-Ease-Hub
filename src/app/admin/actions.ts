@@ -140,3 +140,11 @@ export async function updateSettings(_: ActionResult, form: FormData): Promise<A
     return "Settings saved";
   }, "/admin/settings", true);
 }
+
+// ---- Payments ----
+export async function markRefunded(paymentId: string): Promise<ActionResult> {
+  return attempt(async () => {
+    await db.payment.update({ where: { id: paymentId }, data: { status: "REFUNDED", refundedAt: new Date() } });
+    return "Marked as refunded";
+  }, "/admin", true);
+}

@@ -25,7 +25,7 @@ export const POST = handle(async (req: Request) => {
   const user = await getCurrentUser();
   if (!user) throw new HttpError(401, "Please sign in");
   if (user.ninVerifiedAt) return NextResponse.json({ ok: true });
-  rateLimit(`nin:${user.id}`, 3, 24 * 3600_000);
+  await rateLimit(`nin:${user.id}`, 3, 24 * 3600_000);
   const input = schema.parse(await req.json());
 
   // Step 1: the address (errors here are about email/phone/address, not the NIN)

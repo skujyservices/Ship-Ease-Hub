@@ -85,6 +85,8 @@ export const getInsurancePremium = (parcel: string, insurance_type: "local" | "e
   req<T.InsurancePremium>("GET", "/insurance/premium", { query: { parcel, insurance_type, currency } });
 export const getInsurancePremiumByValue = (parcel_value: number, insurance_type: "local" | "export", currency: T.Currency = "NGN") =>
   req<T.InsurancePremium>("POST", "/insurance/premium", { body: { parcel_value, insurance_type, currency } });
+export const getInsurances = (q: Page & { status?: "confirmed" | "pending" | "failed" } = {}) =>
+  req<{ insurances: T.Insurance[] }>("GET", "/insurance", { query: q });
 export const purchaseInsurance = (shipment: string) => req<T.Insurance>("POST", "/insurance/purchase", { body: { shipment } });
 
 // ---------- Claims ----------
