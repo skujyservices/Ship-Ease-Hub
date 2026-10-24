@@ -52,7 +52,7 @@ export async function getCurrentUser() {
   if (!session) return null;
   return db.user.findUnique({
     where: { id: session.uid },
-    select: { id: true, name: true, email: true, phone: true, role: true, suiteId: true, businessName: true, ninVerifiedAt: true, ninName: true, disabledAt: true },
+    select: { id: true, name: true, email: true, phone: true, role: true, suiteId: true, businessName: true, ninVerifiedAt: true, ninName: true, disabledAt: true, emailVerifiedAt: true, pendingEmail: true },
   }).then((u) => (u && !u.disabledAt ? u : null));
 }
 

@@ -42,18 +42,20 @@ enum PaymentPurpose {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  phone         String?
-  name          String
-  passwordHash  String
-  role          Role      @default(CUSTOMER)
-  suiteId       String    @unique // e.g. SEH-10482, printed on foreign warehouse addresses
-  businessName  String?
-  ninVerifiedAt DateTime? // identity checked with Terminal (NIN, name must match)
-  ninName       String?
-  disabledAt    DateTime? // staff removed / account blocked
-  createdAt     DateTime  @default(now())
+  id              String    @id @default(cuid())
+  email           String    @unique
+  phone           String?
+  name            String
+  passwordHash    String
+  role            Role      @default(CUSTOMER)
+  suiteId         String    @unique // e.g. SEH-10482, printed on foreign warehouse addresses
+  businessName    String?
+  emailVerifiedAt DateTime? // set when they click the link we email them
+  pendingEmail    String? // new address waiting for confirmation
+  ninVerifiedAt   DateTime? // identity checked with Terminal (NIN, name must match)
+  ninName         String?
+  disabledAt      DateTime? // staff removed / account blocked
+  createdAt       DateTime  @default(now())
 
   addresses    SavedAddress[]
   shipments    Shipment[]
@@ -309,4 +311,23 @@ model ProcurementRequest {
   paidAt         DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+}
+
+// Fixed-window counters for endpoints that cost money upstream (shared by all server instances)
+model RateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+}
+
+// Server errors captured by instrumentation.ts (shown in Admin, emailed to the admin)
+model ErrorLog {
+  id        String   @id @default(cuid())
+  digest    String?
+  message   String
+  path      String
+  routeType String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

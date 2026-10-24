@@ -302,6 +302,7 @@ export async function bookPaidShipment(shipmentId: string) {
 
     await applyTerminalShipment(shipment.id, booked, "terminal");
     await addEvent(shipment.id, STATUS.BOOKED, `Booked with ${rate.carrierName}`, "system");
+    if (shipment.withInsurance) await ensureInsuranceId(shipment.id).catch(() => null);
 
     const warning = (booked.metadata as { priority_pickup_error?: string } | undefined)?.priority_pickup_error;
     if (warning) await addEvent(shipment.id, STATUS.BOOKED, `Priority pickup unavailable: ${warning}`, "terminal");
@@ -403,12 +404,32 @@ export async function applyTerminalShipment(shipmentId: string, t: Partial<TShip
 }
 
 /** Pulls the latest tracking from Terminal. With `ifOlderThanMs`, only when the record has gone quiet that long. */
+/**
+ * Insurance number for a booked shipment. Normally set by the insurance.success webhook;
+ * this looks it up from Terminal's insurance list when the webhook hasn't arrived.
+ */
+export async function ensureInsuranceId(shipmentId: string): Promise<string | null> {
+  const s = await db.shipment.findUniqueOrThrow({ where: { id: shipmentId } });
+  if (s.insuranceId || !s.withInsurance || !s.terminalShipmentId) return s.insuranceId;
+  for (let page = 1; page <= 3; page++) {
+    const { insurances } = await terminal.getInsurances({ page, perPage: 100 }).catch(() => ({ insurances: [] as { insurance_id: string; shipment: string }[] }));
+    const hit = insurances.find((i) => i.shipment === s.terminalShipmentId);
+    if (hit) {
+      await db.shipment.update({ where: { id: shipmentId }, data: { insuranceId: hit.insurance_id } });
+      return hit.insurance_id;
+    }
+    if (insurances.length < 100) break;
+  }
+  return null;
+}
+
 export async function refreshTracking(shipmentId: string, ifOlderThanMs?: number) {
   const s = await db.shipment.findUniqueOrThrow({ where: { id: shipmentId } });
   if (!s.terminalShipmentId || [STATUS.DRAFT, STATUS.AWAITING_PAYMENT].includes(s.status as never)) return s;
   if (ifOlderThanMs && Date.now() - s.updatedAt.getTime() < ifOlderThanMs) return s;
   const t = await terminal.trackShipment(s.terminalShipmentId);
   await applyTerminalShipment(s.id, t, "system");
+  if (s.withInsurance && !s.insuranceId) await ensureInsuranceId(s.id);
   return db.shipment.findUniqueOrThrow({ where: { id: shipmentId } });
 }
 

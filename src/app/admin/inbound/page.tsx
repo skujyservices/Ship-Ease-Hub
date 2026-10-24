@@ -7,6 +7,8 @@ import { storageState } from "@/lib/inbound/service";
 import { ActionForm } from "../ActionForm";
 import { PageTitle, Table, td } from "../ui";
 import { arriveSelected, collectAtDesk, dispatchSelected, logPackage } from "./actions";
+import { PhotoInput } from "./PhotoInput";
+import { storageReady } from "@/lib/storage";
 
 const TABS = [
   ["intake", "Package intake"],
@@ -75,7 +77,8 @@ async function Intake({ suite }: { suite: string }) {
               <input name="widthCm" type="number" step="0.1" min="0" className="input" placeholder="W cm" />
               <input name="heightCm" type="number" step="0.1" min="0" className="input" placeholder="H cm" />
             </div>
-            <textarea name="photos" className="input sm:col-span-2" rows={2} placeholder="Photo links from the partner (one per line, optional)" />
+            <PhotoInput enabled={storageReady()} />
+            <textarea name="photos" className="input sm:col-span-2" rows={2} placeholder="Photo links from the partner (one per line, optional)" aria-label="Photo links" />
             <input name="notes" className="input sm:col-span-2" placeholder="Notes (damage, extra items…)" />
           </div>
         </ActionForm>

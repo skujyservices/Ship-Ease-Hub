@@ -3,6 +3,7 @@ import { Logo } from "@/components/Logo";
 import { TabBar } from "@/components/TabBar";
 import { requireUser } from "@/lib/auth";
 import { ServiceWorker } from "@/components/ServiceWorker";
+import { VerifyBanner } from "./account/ProfileForms";
 
 export default async function AppLayout({ children }: LayoutProps<"/app">) {
   const user = await requireUser("/app");
@@ -19,6 +20,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
           </div>
         </div>
       </header>
+      {!user.emailVerifiedAt && process.env.RESEND_API_KEY && <VerifyBanner email={user.pendingEmail ?? user.email} />}
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-28 pt-6 sm:pb-10 print:p-0">{children}</main>
       <ServiceWorker />
     </div>

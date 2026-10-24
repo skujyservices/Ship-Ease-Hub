@@ -8,7 +8,7 @@ type Hit = Record<string, unknown>;
 export const GET = handle(async (req: NextRequest) => {
   const q = req.nextUrl.searchParams.get("q")?.trim();
   if (!q || q.length < 3) return NextResponse.json([]);
-  rateLimit(`hs:${clientIp(req)}`, 60, 60_000);
+  await rateLimit(`hs:${clientIp(req)}`, 60, 60_000);
   const data = (await searchHsCodes(q, { perPage: 10 })) as Hit[] | { hscodes?: Hit[]; hs_codes?: Hit[]; data?: Hit[] };
   const list: Hit[] = Array.isArray(data) ? data : (data.hscodes ?? data.hs_codes ?? data.data ?? []);
   return NextResponse.json(

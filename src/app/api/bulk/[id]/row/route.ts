@@ -25,7 +25,7 @@ export const POST = handle(async (req: Request, ctx: RouteContext<"/api/bulk/[id
   if (!user) throw new HttpError(401, "Please sign in");
   const batch = await db.batch.findUnique({ where: { id } });
   if (!batch || batch.userId !== user.id) throw new HttpError(404, "Batch not found");
-  rateLimit(`bulk:${user.id}`, 300, 3600_000);
+  await rateLimit(`bulk:${user.id}`, 300, 3600_000);
 
   const { from, packaging, purpose, strategy, row } = schema.parse(await req.json());
   const draft = await createQuote(

@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getSettings, WAREHOUSES, type WarehouseCode } from "@/lib/settings";
 import { chargeableKg } from "@/lib/inbound/service";
 import { BRAND } from "@/lib/brand";
+import { photoUrls } from "@/lib/storage";
 import { CopyButton, PackagePicker, PreAlertForm, type PackageRow } from "./AbroadClient";
 
 export const metadata: Metadata = { title: "Ship from abroad" };
@@ -21,7 +22,9 @@ export default async function AbroadPage() {
     (Object.keys(WAREHOUSES) as WarehouseCode[]).map((w) => [w, Math.round(settings.inboundRates[w].perKgMinor * (1 + settings.inboundMarkupPercent / 100))]),
   ) as Record<WarehouseCode, number>;
 
-  const rows: PackageRow[] = packages.map((p) => ({
+  const thumbs = await Promise.all(packages.map((p) => photoUrls(p.photos.slice(0, 1))));
+  const rows: PackageRow[] = packages.map((p, i) => ({
+    photo: thumbs[i][0] ?? null,
     id: p.id,
     warehouse: p.warehouse as WarehouseCode,
     status: p.status as PackageRow["status"],

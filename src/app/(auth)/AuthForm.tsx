@@ -43,6 +43,12 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: stri
         <p className="-mt-2 text-right text-xs"><Link href="/forgot" className="font-semibold text-purple">Forgot password?</Link></p>
       )}
       {state?.error && <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{state.error}</p>}
+      {mode === "signup" && (
+        <p className="text-xs text-navy/60">
+          By creating an account you agree to our <Link href="/terms" className="font-semibold text-purple">Terms</Link> and{" "}
+          <Link href="/privacy" className="font-semibold text-purple">Privacy policy</Link>.
+        </p>
+      )}
       <button className="btn-primary w-full" disabled={pending}>
         {pending ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}
       </button>
